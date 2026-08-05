@@ -1,0 +1,21 @@
+# Player Coordinates HUD localisation source.
+# Generated into native TextDataBlock .assets at build time by
+# utils/LocalizationGenerator.cs (shared via link.sh).
+#
+# Format: Namespace -> Leaf -> { hint, <iso>, <iso>, ... }
+#   - hint is translator documentation; not generated.
+#
+# ASCII rule: never use U+2026 (real ellipsis) or U+2014 (em-dash) -- CK's PugFont
+# crashes. Use '...' and '-'. German umlauts are fine.
+#
+# Mod Settings Menu section (Options -> Mod Settings). The framework looks up each
+# SETTING label by `<ModId>-Config/<key>` and the section HINT by `<ModId>-Config/_hint`.
+PlayerCoordinatesHud-Config:
+  _hint:
+    hint: "Section hint shown under the Player Coordinates HUD heading."
+    en: "Show your position and distance from the Core in the bottom-left corner."
+    de: "Zeigt deine Position und die Entfernung zum Core unten links an."
+  enabled:
+    hint: "Master on/off toggle label."
+    en: "Enabled"
+    de: "Aktiviert"
