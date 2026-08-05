@@ -1,0 +1,22 @@
+{
+    "name": "PlayerCoordinatesHud.Editor",
+    "rootNamespace": "PlayerCoordinatesHud.Editor",
+    "references": [
+        "PlayerCoordinatesHud",
+        "ModSDK.Editor",
+        "PugMod.SDK"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "modio.UnityPlugin.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
