@@ -29,6 +29,10 @@ UserSettings/
 .envrc
 .envrc.local
 
+# LocalizationGenerator output (regenerated each build from localization/localization.yaml)
+unity/PlayerCoordinatesHud/Localization/Generated/
+unity/PlayerCoordinatesHud/Localization/Generated.meta
+
 # Shared editor helpers — symlinked in by utils/link.sh (the .cs are symlinks
 # into ../utils, the .meta are Unity-generated locally; no asset references
 # them by GUID, so neither belongs in the repo).
