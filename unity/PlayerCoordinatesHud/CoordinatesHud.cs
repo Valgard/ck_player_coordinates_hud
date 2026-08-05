@@ -35,6 +35,22 @@ namespace PlayerCoordinatesHud
         protected void Awake()
         {
             Instance = this;
+
+            // One-shot: this only ever fires once for the lifetime of the mod's HUD instance (the
+            // caller in PlayerCoordinatesHudMod never re-instantiates the prefab). Without it, a
+            // missed Editor wiring (Task 4) silently degrades to "loads, does nothing" — indistinguishable
+            // from the visibility gate legitimately deciding to hide the HUD.
+            string missing = "";
+            if (hudRoot == null)
+                missing += "hudRoot";
+            if (coordinateText == null)
+                missing += (missing.Length > 0 ? ", " : "") + "coordinateText";
+            if (coordinateTextOutline == null)
+                missing += (missing.Length > 0 ? ", " : "") + "coordinateTextOutline";
+            if (missing.Length > 0)
+                Debug.LogError(
+                    $"[PlayerCoordinatesHud] CoordinatesHud is missing serialized field(s): {missing}. Wire them on the PlayerCoordinatesHUD prefab in the Unity Editor."
+                );
         }
 
         private void OnDestroy()
@@ -81,11 +97,22 @@ namespace PlayerCoordinatesHud
             if (text == _lastRendered)
                 return;
 
+            // Only record the paint if something was actually painted — with both fields unwired
+            // (Task 4 wiring missing), _lastRendered must stay null so the bookkeeping never claims
+            // a paint that never happened.
+            bool painted = false;
             if (coordinateText != null)
+            {
                 coordinateText.Render(text);
+                painted = true;
+            }
             if (coordinateTextOutline != null)
+            {
                 coordinateTextOutline.Render(text);
-            _lastRendered = text;
+                painted = true;
+            }
+            if (painted)
+                _lastRendered = text;
         }
     }
 }

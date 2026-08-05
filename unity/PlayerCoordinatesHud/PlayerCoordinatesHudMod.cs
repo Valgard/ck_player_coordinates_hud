@@ -16,6 +16,12 @@ namespace PlayerCoordinatesHud
         // Captured in ModObjectLoaded, instantiated in Update.
         private static GameObject _hudPrefab;
 
+        // The instantiated HUD GameObject. Gating re-instantiation on this (NOT on
+        // CoordinatesHud.Instance) matters: Instance is only assigned by that component's own Awake,
+        // and until Task 4's Editor wiring attaches CoordinatesHud to the prefab root, no Awake ever
+        // fires — an Instance-based gate would then re-instantiate the prefab every single frame.
+        private static GameObject _hudInstance;
+
         public void EarlyInit()
         {
             Debug.Log("[PlayerCoordinatesHud] EarlyInit");
@@ -45,8 +51,14 @@ namespace PlayerCoordinatesHud
 
         public void Update()
         {
-            if (_hudPrefab != null && CoordinatesHud.Instance == null && Manager.ui != null && Manager.ui.chestInventoryUI != null)
-                Object.Instantiate(_hudPrefab, Manager.ui.chestInventoryUI.transform.parent);
+            if (_hudPrefab != null && _hudInstance == null && Manager.ui != null && Manager.ui.chestInventoryUI != null)
+            {
+                _hudInstance = Object.Instantiate(_hudPrefab, Manager.ui.chestInventoryUI.transform.parent);
+                if (_hudInstance.GetComponent<CoordinatesHud>() == null)
+                    Debug.LogError(
+                        "[PlayerCoordinatesHud] PlayerCoordinatesHUD prefab root has no CoordinatesHud component attached — the HUD will not render. Wire it in the Unity Editor."
+                    );
+            }
 
             var hud = CoordinatesHud.Instance;
             if (hud == null)
