@@ -17,7 +17,10 @@ playing.
 - **Same format as the map.** `x, z (distance)` — identical numbers to what
   the map view shows for the same tile, so the two are directly comparable.
 - **Auto-hides during inventory / menus / load screens** — never overlaps the
-  vanilla UI.
+  vanilla UI. Stays visible while the big map (Tab) is open, though: the
+  map's own coordinate readout follows your mouse cursor, so having this
+  one keep following your player at the same time gives you both at a
+  glance.
 - **Configurable in-game.** Open **Options → Mod Settings** to switch the
   readout off entirely. No config files.
 - **English and German.** The settings label and hint follow the in-game

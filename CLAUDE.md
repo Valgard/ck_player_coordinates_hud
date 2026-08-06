@@ -175,16 +175,20 @@ wiped.
 
 **Required dependencies:** declared in `unity/PlayerCoordinatesHud.asset`'s
 `dependencies:` list (`CoreLib`, `ModSettingsMenu`, both `required: 1`) and in
-the runtime asmdef's `references` (both provide C# types this mod compiles
-against). The loader refuses to load the mod without them.
+the runtime asmdef's `references`. Only `ModSettingsMenu` supplies C# types
+this mod actually compiles against; the CoreLib reference is harmless and
+kept for family consistency with the sibling mods, but the load-bearing part
+of the CoreLib dependency is the **manifest** entry — it drives the Roslyn
+compile order at load time, independent of whether this mod's code touches
+any CoreLib type. The loader refuses to load the mod without either
+dependency.
 
 ## Publishing to mod.io
 
 `../utils/upload.sh` publishes this mod via the shared
 `CoreKeeperModUtils.CLIPublishHelper.Publish` Editor class. The version comes
 from the topmost `## [x.y.z]` entry of `CHANGELOG.md`; the profile logo is
-`unity/PlayerCoordinatesHud/Editor/logo.png` (still the SDK placeholder as of
-this writing — replace before first publish); the real mod ID lands in
+`unity/PlayerCoordinatesHud/Editor/logo.png`; the real mod ID lands in
 `unity/PlayerCoordinatesHud/Editor/PlayerCoordinatesHud_modio.asset` (currently
 `modId: 0`, unpublished). Set the mod.io profile type tag to **`Script`** (an
 `Asset` tag silently disables the mod's scripts).

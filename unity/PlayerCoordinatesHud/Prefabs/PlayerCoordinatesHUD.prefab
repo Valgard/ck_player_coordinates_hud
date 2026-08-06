@@ -48,7 +48,7 @@ MonoBehaviour:
   activeInPlatforms: -1
   activeInStoreFronts: -1
   renderOnStart: 0
-  keepEnabledOnStart: 0
+  keepEnabledOnStart: 1
   alwaysUpdateDynamicTextPixelPos: 0
   isWrittenToByUser: 0
   checkForProfanity: 0
@@ -61,7 +61,7 @@ MonoBehaviour:
   dontResetEffectsOnRender: 0
   hideInStreamerMode: 0
   maxWidth: 0
-  textString: 45, 12
+  textString: 
   textSuffix: 
   formatFields: []
   overrideMaterial: {fileID: 0}
@@ -198,7 +198,7 @@ MonoBehaviour:
   activeInPlatforms: -1
   activeInStoreFronts: -1
   renderOnStart: 0
-  keepEnabledOnStart: 0
+  keepEnabledOnStart: 1
   alwaysUpdateDynamicTextPixelPos: 0
   isWrittenToByUser: 0
   checkForProfanity: 0
@@ -211,7 +211,7 @@ MonoBehaviour:
   dontResetEffectsOnRender: 0
   hideInStreamerMode: 0
   maxWidth: 0
-  textString: 45, 12
+  textString: 
   textSuffix: 
   formatFields: []
   overrideMaterial: {fileID: 0}
