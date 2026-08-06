@@ -11,8 +11,8 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d83df2ae64ce1e94f9c006b9d326bf02, type: 3}
   m_Name: PlayerCoordinatesHud_modio
-  m_EditorClassIdentifier:
-  modId: 0
+  m_EditorClassIdentifier: 
+  modId: 6285685
   modSettings: {fileID: 11400000, guid: 0b0438eefa90411b8c6811ad332acf60, type: 2}
   logo: {fileID: 0}
-  summary:
+  summary: 
