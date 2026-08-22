@@ -7,7 +7,7 @@ namespace PlayerCoordinatesHud
 {
     /// <summary>
     /// Mod bootstrap. Pugstorm's loader instantiates this on game start and calls the IMod lifecycle
-    /// methods. Registers the Mod Settings section, captures the HUD prefab by GameObject name, and
+    /// methods. Registers the Mod settings section, captures the HUD prefab by GameObject name, and
     /// lazily instantiates it under the in-game HUD root once the UIManager hierarchy exists — the
     /// same pattern both sibling HUD mods use.
     /// </summary>

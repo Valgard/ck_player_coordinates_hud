@@ -16,7 +16,7 @@ current position, permanently, in the bottom-left corner of the screen.
   screens; it never overlaps the vanilla UI. Keeps showing while the big
   map (Tab) is open, though — the map's own readout follows your mouse, so
   the two together give you both your position and the cursor's.
-- Configurable in-game. Open **Options → Mod Settings** to switch the readout
+- Configurable in-game. Open **Options → Mod settings** to switch the readout
   off entirely. No config files.
 - English & German, following your in-game language.
 

@@ -8,7 +8,7 @@
 # ASCII rule: never use U+2026 (real ellipsis) or U+2014 (em-dash) -- CK's PugFont
 # crashes. Use '...' and '-'. German umlauts are fine.
 #
-# Mod Settings Menu section (Options -> Mod Settings). The framework looks up each
+# Mod Settings Menu section (Options -> Mod settings). The framework looks up each
 # SETTING label by `<ModId>-Config/<key>` and the section HINT by `<ModId>-Config/_hint`.
 PlayerCoordinatesHud-Config:
   _hint:

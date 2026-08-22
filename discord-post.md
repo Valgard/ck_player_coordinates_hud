@@ -15,7 +15,7 @@ two together tell you where you are *and* what you are pointing at.
 
 ## Settings
 
-**Options → Mod Settings** has an on/off switch. The corner is fixed for now;
+**Options → Mod settings** has an on/off switch. The corner is fixed for now;
 repositioning and a hotkey are on the list.
 
 ## Requirements

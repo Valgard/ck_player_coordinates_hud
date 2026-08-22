@@ -21,7 +21,7 @@ playing.
   map's own coordinate readout follows your mouse cursor, so having this
   one keep following your player at the same time gives you both at a
   glance.
-- **Configurable in-game.** Open **Options → Mod Settings** to switch the
+- **Configurable in-game.** Open **Options → Mod settings** to switch the
   readout off entirely. No config files.
 - **English and German.** The settings label and hint follow the in-game
   language.
@@ -31,7 +31,7 @@ playing.
 - Core Keeper (verified on 1.2.1.5)
 - [CoreLib](https://mod.io/g/corekeeper/m/corelib) — required dependency
 - *Mod Settings Menu* — required dependency. Hosts the in-game settings
-  screen (Options → Mod Settings) where the readout is toggled.
+  screen (Options → Mod settings) where the readout is toggled.
 
 ## Installation
 
@@ -43,14 +43,14 @@ alongside this mod.
 
 Nothing to do — the readout appears in the bottom-left corner as soon as
 you're in a world, and follows you as you move. To turn it off, open
-**Options → Mod Settings → Player Coordinates HUD** and flip the toggle off.
+**Options → Mod settings → Player Coordinates HUD** and flip the toggle off.
 
 ## Known Limitations
 
 - **Fixed corner.** The readout always sits bottom-left; it is not yet
   repositionable.
 - **No hotkey.** There is currently no keybind to show/hide the readout on
-  demand — only the Mod Settings toggle.
+  demand — only the Mod settings toggle.
 
 ## Localisation
 
