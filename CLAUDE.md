@@ -199,6 +199,26 @@ carriers.
   `-1`/"Mods" bucket suppresses its own sub-header) plus two loc terms. The
   visibility decision lives only in `CoordinatesHud.LateUpdate`, so a hotkey
   is one more term ANDed into that single `bool show` expression.
+- **Give way to ItemChecklist's HUD.** Both now occupy the same row: ICL's HUD
+  container sits at `(10, 7.8)` and this mod's top corners at `y 7.8`, so with
+  both installed and the readout set to a top-right position they overlap. It
+  should step below ICL when ICL is present, and keep the plain corner when it
+  is not.
+
+  The mechanics are already in place — it is the same shape as the minimap and
+  button-hint cases: find the object, measure what is drawn, sit clear of it,
+  fall back when it is absent. ICL's HUD root is named `ItemChecklistHUD`
+  (`(Clone)` once instantiated) and lands under the same parent this mod uses,
+  so a name lookup finds it without an assembly reference — the dependency must
+  stay optional, since ICL is a separate mod that may simply not be there.
+
+  **The open design question is alignment, not geometry.** ICL's `CounterText`
+  is LEFT-aligned at `+0.6` inside its container; this mod is right-aligned in
+  right-hand positions. Two stacked rows only look deliberate if they share an
+  edge, so one side has to give — either this readout goes left-aligned when it
+  tucks under ICL, or it stays right-aligned and the rows simply share the
+  right edge while their left ends ragged. Decide that before writing code.
+
 - **An icon beside the readout**, drawn as original pixel art with CK's own
   map marker as the visual reference only. This mod ships no sprites at all
   today — no `Art/` tree — so it means standing up the whole sibling pipeline
