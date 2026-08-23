@@ -30,13 +30,29 @@ namespace PlayerCoordinatesHud
         public void Init()
         {
             // Section uses the default AsDeclared sort, so builder-call order IS render order.
+            // No RequiresRestart on either setting: both are read live every frame by
+            // CoordinatesHud (visibility in LateUpdate, placement in ApplyPosition), so a change
+            // in the menu is visible behind it immediately.
             ModSettings
                 .Section(this)
-                .Hint("Show your position and distance from the Core in the bottom-left corner.")
+                .Hint("Show your position and distance from the Core on the HUD.")
                 .Toggle(out var en, "enabled", true)
+                .Choice(
+                    out var position,
+                    "position",
+                    new[]
+                    {
+                        ModConfig.Position.BottomLeft,
+                        ModConfig.Position.BottomRight,
+                        ModConfig.Position.TopLeft,
+                        ModConfig.Position.TopRight,
+                        ModConfig.Position.BelowMinimap,
+                    },
+                    ModConfig.Position.BottomLeft
+                )
                 .Build();
-            ModConfig.Instance.Bind(en);
-            Debug.Log($"[PlayerCoordinatesHud] Settings bound. enabled={ModConfig.Instance.enabled}");
+            ModConfig.Instance.Bind(en, position);
+            Debug.Log($"[PlayerCoordinatesHud] Settings bound. enabled={ModConfig.Instance.enabled}, position={ModConfig.Instance.position}");
         }
 
         public void ModObjectLoaded(Object obj)

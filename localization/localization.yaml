@@ -13,9 +13,38 @@
 PlayerCoordinatesHud-Config:
   _hint:
     hint: "Section hint shown under the Player Coordinates HUD heading."
-    en: "Show your position and distance from the Core in the bottom-left corner."
-    de: "Zeigt deine Position und die Entfernung zum Core unten links an."
+    en: "Show your position and distance from the Core on the HUD."
+    de: "Zeigt deine Position und die Entfernung zum Core im HUD an."
   enabled:
     hint: "Master on/off toggle label."
     en: "Enabled"
     de: "Aktiviert"
+  position:
+    hint: "Choice label - where on the HUD the readout is drawn."
+    en: "Position"
+    de: "Position"
+
+# Choice option labels for `position`. Each leaf is the enum token
+# (ModConfig.Position.<name>.ToString()), which is also what gets persisted -- renaming an enum
+# member here and in the C# resets that player's choice to the default and drops its label.
+PlayerCoordinatesHud-Config/position:
+  BottomLeft:
+    hint: "Position option - the default, and the only placement 1.0.0 had."
+    en: "Bottom left"
+    de: "Unten links"
+  BottomRight:
+    hint: "Position option."
+    en: "Bottom right"
+    de: "Unten rechts"
+  TopLeft:
+    hint: "Position option."
+    en: "Top left"
+    de: "Oben links"
+  TopRight:
+    hint: "Position option."
+    en: "Top right"
+    de: "Oben rechts"
+  BelowMinimap:
+    hint: "Position option - follows the minimap, and uses the top-right corner while the minimap is off screen."
+    en: "Below minimap"
+    de: "Unter der Minimap"
