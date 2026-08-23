@@ -1,4 +1,5 @@
 {
-  "exclude": ["Ping", "Player blue", "Player red", "Player green"],
-  "sheetWidth": 16
+  "exclude": ["Ping", "Player blue", "Player red", "Player green", "Layer 1"],
+  "sheetWidth": 16,
+  "guid": "0ed59860102e4fe16f47e19e16c10ae7"
 }
