@@ -191,49 +191,11 @@ carriers.
   `mapUI.IsShowingBigMap` term. CK's own `PvPTextUI`, the vanilla element that
   sits below the minimap, tests exactly this and nothing else.
 
-## Deferred (not yet built)
+## Not yet built
 
-- **A rebindable show/hide hotkey.** Would need CoreLib's
-  `ControlMappingModule` (own control-mapping category, per the
-  `AddNewCategory` pattern ItemChecklist's Iter-34 established — the default
-  `-1`/"Mods" bucket suppresses its own sub-header) plus two loc terms. The
-  visibility decision lives only in `CoordinatesHud.LateUpdate`, so a hotkey
-  is one more term ANDed into that single `bool show` expression.
-- **Give way to ItemChecklist's HUD.** Both now occupy the same row: ICL's HUD
-  container sits at `(10, 7.8)` and this mod's top corners at `y 7.8`, so with
-  both installed and the readout set to a top-right position they overlap. It
-  should step below ICL when ICL is present, and keep the plain corner when it
-  is not.
-
-  The mechanics are already in place — it is the same shape as the minimap and
-  button-hint cases: find the object, measure what is drawn, sit clear of it,
-  fall back when it is absent. ICL's HUD root is named `ItemChecklistHUD`
-  (`(Clone)` once instantiated) and lands under the same parent this mod uses,
-  so a name lookup finds it without an assembly reference — the dependency must
-  stay optional, since ICL is a separate mod that may simply not be there.
-
-  **The open design question is alignment, not geometry.** ICL's `CounterText`
-  is LEFT-aligned at `+0.6` inside its container; this mod is right-aligned in
-  right-hand positions. Two stacked rows only look deliberate if they share an
-  edge, so one side has to give — either this readout goes left-aligned when it
-  tucks under ICL, or it stays right-aligned and the rows simply share the
-  right edge while their left ends ragged. Decide that before writing code.
-
-- **An icon beside the readout**, drawn as original pixel art with CK's own
-  map marker as the visual reference only. This mod ships no sprites at all
-  today — no `Art/` tree — so it means standing up the whole sibling pipeline
-  (`.pixaki` master → `utils/pixaki_to_sheet.py` → sheet + `.meta` → prefab
-  reference), and the prefab needs a new child, which per the parent
-  `CLAUDE.md` means an Editor session rather than hand-written YAML. The side
-  it sits on hangs off the same `rightAligned` decision `ApplyPosition`
-  already makes.
-
-  Worth knowing before starting: CK's marker is **4 × 4 px**
-  (`Assets/Sprite/player_marker.asset` in the AssetRipper dump, atlas
-  `Texture2D/sactx-0-256x128-Uncompressed-ui-ed19f136.png`), one white ring
-  around a 2 × 2 colour core, and its corner pixels are **opaque map-background
-  blue, not transparent** — fine on the map, wrong over gameplay. So it is a
-  reference for the shape, and genuinely not a sprite to reuse.
+`docs/roadmap.md` — points cut to stand alone, each recording what is already
+settled and what still has to be decided. Read it before starting one; the
+groundwork is done and does not need re-deriving.
 
 ## macOS / CrossOver
 
