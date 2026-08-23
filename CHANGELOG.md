@@ -15,6 +15,9 @@ All notable changes to this mod are documented here.
   stays readable rather than disappearing.
 - **The bottom-right corner keeps clear of the on-screen button hints**, moving
   just above them and dropping into the corner when they are hidden.
+- **"Below minimap" also gives way to the PvP notice.** In a world with PvP
+  enabled the game shows its own label in that exact spot; the readout now sits
+  below it instead of on top of it, and moves back up when PvP is switched off.
 
 ### Changed
 
@@ -23,6 +26,9 @@ All notable changes to this mod are documented here.
   to 1.0.1: it is now flush with the status bars.
 - In the two right-hand corners the readout is right-aligned, so a long
   coordinate string grows inwards instead of running off the screen edge.
+- **The readout now hides when you hide the game's interface** (the toggle-UI
+  key, or the matching option). Previously it stayed on an otherwise empty
+  screen.
 
 ## [1.0.1] - 2026-08-06
 

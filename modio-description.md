@@ -15,12 +15,14 @@ current position on screen, permanently.
 - Put it where you want it: any of the four screen corners, or below the
   minimap — lined up with the game's own UI edges. The below-minimap option
   steps aside to the top-right corner whenever the minimap isn't on screen, so
-  it never lands on top of the big map, and the bottom-right corner keeps clear
-  of the on-screen button hints.
-- Stays out of the way. Auto-hides during inventory, menus, and loading
-  screens; it never overlaps the vanilla UI. Keeps showing while the big
-  map (Tab) is open, though — the map's own readout follows your mouse, so
-  the two together give you both your position and the cursor's.
+  it never lands on top of the big map, and in a PvP world it slides below the
+  game's own PvP notice instead of covering it. The bottom-right corner keeps
+  clear of the on-screen button hints.
+- Stays out of the way. Auto-hides during inventory, menus and loading screens,
+  and when you hide the game's interface with the toggle-UI key; it never
+  overlaps the vanilla UI. Keeps showing while the big map (Tab) is open,
+  though — the map's own readout follows your mouse, so the two together give
+  you both your position and the cursor's.
 - Configurable in-game. Open **Options → Mod settings** to move the readout or
   switch it off entirely. No config files.
 - English & German, following your in-game language.

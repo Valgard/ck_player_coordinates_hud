@@ -18,9 +18,11 @@ playing.
 - **Pick where it sits.** Any of the four screen corners, or below the
   minimap — lined up with the game's own UI edges. The below-minimap position
   moves to the top-right corner whenever the minimap is not on screen, so it
-  never ends up on top of the big map; the bottom-right corner keeps clear of
-  the on-screen button hints.
-- **Auto-hides during inventory / menus / load screens** — never overlaps the
+  never ends up on top of the big map, and in a PvP world it sits below the
+  game's own PvP notice rather than on it. The bottom-right corner keeps clear
+  of the on-screen button hints.
+- **Auto-hides during inventory / menus / load screens, and when you hide the
+  game's interface** (the toggle-UI key) — never overlaps the
   vanilla UI. Stays visible while the big map (Tab) is open, though: the
   map's own coordinate readout follows your mouse cursor, so having this
   one keep following your player at the same time gives you both at a
