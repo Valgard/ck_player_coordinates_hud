@@ -47,12 +47,15 @@ namespace PlayerCoordinatesHud
         private static readonly Vector2 AnchorTopLeft = new Vector2(-13.5f, 7.8f);
         private static readonly Vector2 AnchorTopRight = new Vector2(13.5f, 7.8f);
 
-        // Clearance between the minimap's bottom edge and the readout's centre line. The PugTexts are
-        // verticalAlignment: center, so this absorbs half the text height as well as the visual gap.
-        private const float MinimapGap = 0.5f;
+        // Clearance between a piece of UI and the nearest edge of the readout — one pixel, which is
+        // what CK itself leaves: its PvPEnabledUI sits at y 4.875 against a minimap bottom edge of
+        // 4.9375. Half the text height is subtracted separately (see TextCentreDrop), so this stays
+        // a pure gap rather than a value silently carrying the font size around with it.
+        private const float UIGap = 0.0625f;
 
-        // The same clearance above CK's on-screen button hints, for the bottom-right anchor.
-        private const float HintsGap = 0.5f;
+        // Stands in for half the text height until the first Render has measured one (CK's UI font
+        // is 8px tall, i.e. 0.5 world units at 16 px/unit).
+        private const float FallbackHalfTextHeight = 0.25f;
 
         // CK exposes no manager field for the button hints, so the component is looked up once and
         // cached. The flag separates "not looked up yet" from "looked up, genuinely not there".
@@ -211,7 +214,7 @@ namespace PlayerCoordinatesHud
 
             // Only the height comes from the minimap; x is the shared right edge, so leaving this
             // position for the top-right fallback is a purely vertical move.
-            anchor = new Vector2(RightEdge(), ToLocal(new Vector2(0f, bounds.min.y - MinimapGap)).y);
+            anchor = new Vector2(RightEdge(), ToLocal(new Vector2(0f, bounds.min.y - UIGap - TextCentreDrop())).y);
             return true;
         }
 
@@ -239,8 +242,9 @@ namespace PlayerCoordinatesHud
                 return false;
 
             // Only the height comes from the hints; x is the shared right edge, so the readout does
-            // not drift sideways as buttons appear and disappear.
-            anchor = new Vector2(RightEdge(), ToLocal(new Vector2(0f, bounds.max.y + HintsGap)).y);
+            // not drift sideways as buttons appear and disappear. Same gap as below the minimap, so
+            // the two dynamic positions keep the same visual distance from what they dodge.
+            anchor = new Vector2(RightEdge(), ToLocal(new Vector2(0f, bounds.max.y + UIGap + TextCentreDrop())).y);
             return true;
         }
 
@@ -285,6 +289,27 @@ namespace PlayerCoordinatesHud
                 default:
                     return AnchorBottomLeft;
             }
+        }
+
+        /// <summary>
+        /// How far below a top edge this readout's centre line has to sit for its own top edge to
+        /// land there — copied from CK's own <c>PvPTextUI</c>, the vanilla element below the minimap:
+        /// <c>height / 2 - height % 0.0625</c>.
+        ///
+        /// <para>The modulo is not noise: it drops the sub-pixel remainder so the glyphs keep landing
+        /// on CK's 1/16-unit pixel grid. Half a text height alone would park them between pixels,
+        /// which is where point-filtered sprites go blurry.</para>
+        ///
+        /// <para>Measured from the live text rather than assumed, so a taller font or a language with
+        /// different metrics still lines up. <c>dimensions</c> is only filled once something has been
+        /// rendered, hence the fallback.</para>
+        /// </summary>
+        private float TextCentreDrop()
+        {
+            float height = coordinateText != null ? coordinateText.dimensions.height : 0f;
+            if (height <= 0f)
+                return FallbackHalfTextHeight;
+            return height * 0.5f - height % 0.0625f;
         }
 
         /// <summary>
