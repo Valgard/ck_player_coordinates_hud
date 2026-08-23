@@ -46,8 +46,21 @@ namespace PlayerCoordinatesHud
         private SettingHandle<bool> _enabledHandle;
         private SettingHandle<Position> _positionHandle;
 
+        /// <summary>
+        /// Attaches the live setting handles. Called exactly once, from <c>Init</c>. Both guards below
+        /// are for a mistake that would otherwise be invisible: a null handle silently pins the getter
+        /// to its default, and a second Bind silently swaps which handles the mod reads — in both cases
+        /// the settings screen keeps working while the mod ignores it.
+        /// </summary>
         public void Bind(SettingHandle<bool> enabled, SettingHandle<Position> position)
         {
+            if (enabled == null || position == null)
+                UnityEngine.Debug.LogError(
+                    "[PlayerCoordinatesHud] Bind called with a null handle — that setting will stay at its default and ignore the menu."
+                );
+            if (_enabledHandle != null || _positionHandle != null)
+                UnityEngine.Debug.LogWarning("[PlayerCoordinatesHud] Bind called more than once — the later handles win.");
+
             _enabledHandle = enabled;
             _positionHandle = position;
         }

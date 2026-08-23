@@ -47,13 +47,18 @@ namespace PlayerCoordinatesHud
         //   right   the minimap's right edge is 14.5 (centre 12.5, width 4); one pixel inside it is
         //           where CK puts its own text against that frame (PvPEnabledUI at 14.4375).
         //   bottom  the minimap's bottom edge is 4.9375 (centre 6.0625, height 2.25).
-        //   rows    7.8 is NOT a vanilla value — it is ItemChecklist's HUD row (its hudRoot sits at
-        //           (10, 7.8)), chosen so a top corner lines up with the mod-HUD row already there.
-        //           BottomY mirrors it. The 1.0.0 prefab used -7.5.
+        //   rows    NOT vanilla values. TopY tracks ItemChecklist's HUD row (its hudRoot sits at
+        //           (10, 7.8)) so a top corner lines up with the mod-HUD row already there — nudged
+        //           to 7.8125 because 7.8 is 124.8 px, i.e. off CK's 1/16 pixel grid. The 0.2 px
+        //           that buys is invisible; landing between pixels is not, for point-filtered text.
+        //           BottomY does NOT mirror it: the text always hangs RowDrop below its anchor, so a
+        //           mirrored anchor would leave the bottom margin 2 px tighter than the top. -7.6875
+        //           equalises them at 6 px, and puts both anchors AND both text centres on the grid
+        //           (125 / -123 and 124 / -124 px). The 1.0.0 prefab used -7.5.
         private const float LeftEdgeX = -14.125f;
         private const float RightEdgeX = 14.4375f;
-        private const float TopY = 7.8f;
-        private const float BottomY = -7.8f;
+        private const float TopY = 7.8125f;
+        private const float BottomY = -7.6875f;
         private const float MinimapBottomY = 4.9375f;
 
         // Clearance between a piece of UI and the nearest edge of the readout — one pixel, which is
@@ -162,26 +167,17 @@ namespace PlayerCoordinatesHud
         private void ApplyPosition()
         {
             var configured = ModConfig.Instance.position;
+            var corner = EffectiveCorner(configured);
 
-            Vector2 anchor;
-            bool rightAligned;
-            if (configured == ModConfig.Position.BelowMinimap && TryGetMinimapAnchor(out anchor))
-            {
-                // Right-aligned so the readout's right edge lines up with the minimap's — and so the
-                // fallback below is a purely vertical move rather than a re-flow of the text.
-                rightAligned = true;
-            }
-            else if (configured == ModConfig.Position.BottomRight && TryGetButtonHintsAnchor(out anchor))
-            {
-                rightAligned = true;
-            }
-            else
-            {
-                // BelowMinimap with no minimap on screen falls back to the top-right corner.
-                var effective = configured == ModConfig.Position.BelowMinimap ? ModConfig.Position.TopRight : configured;
-                anchor = CornerAnchor(effective);
-                rightAligned = effective == ModConfig.Position.BottomRight || effective == ModConfig.Position.TopRight;
-            }
+            // Two positions dodge UI that comes and goes; when it is not there, they simply ARE their
+            // corner. The other three are their corner, always.
+            if (!TryGetDodgingAnchor(configured, out var anchor))
+                anchor = CornerAnchor(corner);
+
+            // Alignment follows the corner the position belongs to — and deliberately not whether the
+            // dodge succeeded: both dodging positions are right-hand ones, so a dodge that fails is a
+            // purely vertical move rather than a re-flow of the text.
+            bool rightAligned = IsRightAligned(corner);
 
             var target = new Vector3(anchor.x, anchor.y, _anchorZ);
             if (transform.localPosition != target)
@@ -192,6 +188,39 @@ namespace PlayerCoordinatesHud
                 SetAlignment(rightAligned);
                 _appliedRightAligned = rightAligned;
                 RepaintForNewAlignment();
+            }
+        }
+
+        /// <summary>
+        /// The corner a position belongs to. <c>BelowMinimap</c> is the only value that is not itself a
+        /// corner; naming its fallback here keeps that mapping in one place instead of inline at each
+        /// use, so a position added later is handled by editing one expression.
+        /// </summary>
+        private static ModConfig.Position EffectiveCorner(ModConfig.Position configured) =>
+            configured == ModConfig.Position.BelowMinimap ? ModConfig.Position.TopRight : configured;
+
+        /// <summary>
+        /// Whether a corner grows its text leftwards. Derived from the corner rather than tracked, so
+        /// it cannot disagree with the anchor it belongs to.
+        /// </summary>
+        private static bool IsRightAligned(ModConfig.Position corner) => corner == ModConfig.Position.BottomRight || corner == ModConfig.Position.TopRight;
+
+        /// <summary>
+        /// The anchor for a position that gets out of the way of other UI, or false when that UI is
+        /// not on screen — in which case the plain corner applies. Only two positions dodge anything;
+        /// every other value returns false here without asking.
+        /// </summary>
+        private bool TryGetDodgingAnchor(ModConfig.Position configured, out Vector2 anchor)
+        {
+            switch (configured)
+            {
+                case ModConfig.Position.BelowMinimap:
+                    return TryGetMinimapAnchor(out anchor);
+                case ModConfig.Position.BottomRight:
+                    return TryGetButtonHintsAnchor(out anchor);
+                default:
+                    anchor = default;
+                    return false;
             }
         }
 
@@ -274,6 +303,12 @@ namespace PlayerCoordinatesHud
         /// buttons that apply right now, right-to-left across several rows, and the whole container
         /// follows the player's own "show key hints" option. So the readout measures what is actually
         /// on screen and sits above that, dropping into the true corner when nothing is shown.</para>
+        ///
+        /// <para><strong>One frame of lag is expected here and is not a bug.</strong> CK lays the
+        /// buttons out in its own <c>LateUpdate</c>, and two <c>LateUpdate</c>s have no defined order
+        /// without a script execution order entry — so when the set of hints changes, this may measure
+        /// the previous frame's positions. It shows as the readout settling one frame late, never as a
+        /// wrong resting position, and fixing it would mean an execution-order dependency on CK.</para>
         /// </summary>
         private bool TryGetButtonHintsAnchor(out Vector2 anchor)
         {
@@ -375,9 +410,13 @@ namespace PlayerCoordinatesHud
         }
 
         /// <summary>
-        /// How far below a top edge this readout's centre line has to sit for its own top edge to
-        /// land there — copied from CK's own <c>PvPTextUI</c>, the vanilla element below the minimap:
-        /// <c>height / 2 - height % 0.0625</c>.
+        /// The distance from one of this readout's own edges to its centre line — copied from CK's
+        /// <c>PvPTextUI</c>, the vanilla element below the minimap: <c>height / 2 - height % 0.0625</c>.
+        ///
+        /// <para>CK only ever subtracts it (its text hangs below the minimap), but the value is a
+        /// half-height and therefore direction-free: subtract it to put the readout's TOP edge on a
+        /// line, add it to put its BOTTOM edge there. Both uses are in this file — below the minimap
+        /// and above the button hints — so the plus sign there is not a slip.</para>
         ///
         /// <para><strong>The modulo term is always zero — keep it anyway.</strong> It cannot be
         /// otherwise: <c>dimensions.height</c> is <c>charDims.y / pixelsPerUnit</c> with an integer

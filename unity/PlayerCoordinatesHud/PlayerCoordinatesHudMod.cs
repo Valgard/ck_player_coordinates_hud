@@ -30,26 +30,19 @@ namespace PlayerCoordinatesHud
         public void Init()
         {
             // Section uses the default AsDeclared sort, so builder-call order IS render order.
-            // No RequiresRestart on either setting: both are read live every frame by
-            // CoordinatesHud (visibility in LateUpdate, placement in ApplyPosition), so a change
-            // in the menu is visible behind it immediately.
+            // No RequiresRestart on either setting: both are read live every frame by CoordinatesHud
+            // (visibility in LateUpdate, placement in ApplyPosition), so a change takes effect the
+            // moment the menu closes — not while it is open, since the readout hides behind any menu.
+            //
+            // The options come from the enum itself rather than a hand-written array, so a new
+            // Position member appears in the menu automatically. Declaration order is menu order, and
+            // ModConfig.Position.BottomLeft is deliberately first: it is both the default and
+            // default(Position), so there is no unreachable zero value.
             ModSettings
                 .Section(this)
                 .Hint("Show your position and distance from the Core on the HUD.")
                 .Toggle(out var en, "enabled", true)
-                .Choice(
-                    out var position,
-                    "position",
-                    new[]
-                    {
-                        ModConfig.Position.BottomLeft,
-                        ModConfig.Position.BottomRight,
-                        ModConfig.Position.TopLeft,
-                        ModConfig.Position.TopRight,
-                        ModConfig.Position.BelowMinimap,
-                    },
-                    ModConfig.Position.BottomLeft
-                )
+                .Choice(out var position, "position", (ModConfig.Position[])System.Enum.GetValues(typeof(ModConfig.Position)), ModConfig.Position.BottomLeft)
                 .Build();
             ModConfig.Instance.Bind(en, position);
             Debug.Log($"[PlayerCoordinatesHud] Settings bound. enabled={ModConfig.Instance.enabled}, position={ModConfig.Instance.position}");
