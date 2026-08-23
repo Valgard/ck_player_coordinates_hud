@@ -11,10 +11,10 @@ namespace PlayerCoordinatesHud
     internal sealed class ModConfig
     {
         /// <summary>
-        /// Where the readout sits. The four corners are fixed anchor points calibrated against the
-        /// uiCamera's constant view area; <see cref="BelowMinimap"/> is the only value that moves at
-        /// runtime, tracking CK's own minimap and falling back to <see cref="TopRight"/> whenever the
-        /// minimap is off screen.
+        /// Where the readout sits. Every anchor is a constant, lined up with CK's own UI edges; what
+        /// varies at runtime is only which anchor applies. <see cref="BelowMinimap"/> steps aside to
+        /// <see cref="TopRight"/> while the minimap is not drawn, and <see cref="BottomRight"/> rides
+        /// above CK's on-screen button hints, whose height changes as they come and go.
         ///
         /// <para>The member names are load-bearing twice over: <c>Choice</c> persists a setting as its
         /// token (<c>value.ToString()</c>) and looks the label up as
@@ -23,18 +23,22 @@ namespace PlayerCoordinatesHud
         /// </summary>
         public enum Position
         {
-            /// <summary>The 1.0.0 position, kept as the default so an existing install does not move.</summary>
+            /// <summary>1.0.0's corner, and still the default. Not its exact coordinate: it is now
+            /// flush with CK's status bars, a little further out than the hand-picked original.</summary>
             BottomLeft,
 
+            /// <summary>Sits just above CK's on-screen button hints and drops into the corner when
+            /// they are hidden — the one position whose anchor is measured rather than fixed, because
+            /// the hints grow and shrink with the situation.</summary>
             BottomRight,
 
             TopLeft,
 
             TopRight,
 
-            /// <summary>Hangs below CK's minimap, following it as it is scaled or moved. Whenever the
-            /// minimap is not on screen — switched off in the options, replaced by the big map, or
-            /// hidden behind an open inventory — the readout uses <see cref="TopRight"/> instead.</summary>
+            /// <summary>Sits below CK's minimap. Whenever the minimap is not on screen — switched off
+            /// in the options, replaced by the big map, or hidden behind an open inventory — the
+            /// readout uses <see cref="TopRight"/> instead.</summary>
             BelowMinimap,
         }
 

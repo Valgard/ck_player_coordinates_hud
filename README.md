@@ -16,9 +16,10 @@ playing.
 - **Same format as the map.** `x, z (distance)` — identical numbers to what
   the map view shows for the same tile, so the two are directly comparable.
 - **Pick where it sits.** Any of the four screen corners, or below the
-  minimap. The below-minimap position follows the minimap as the game
-  rescales it, and moves to the top-right corner whenever the minimap is not
-  on screen — so it never ends up on top of the big map.
+  minimap — lined up with the game's own UI edges. The below-minimap position
+  moves to the top-right corner whenever the minimap is not on screen, so it
+  never ends up on top of the big map; the bottom-right corner keeps clear of
+  the on-screen button hints.
 - **Auto-hides during inventory / menus / load screens** — never overlaps the
   vanilla UI. Stays visible while the big map (Tab) is open, though: the
   map's own coordinate readout follows your mouse cursor, so having this
@@ -46,7 +47,8 @@ alongside this mod.
 
 Nothing to do — the readout appears as soon as you're in a world, and follows
 you as you move. To move it or turn it off, open **Options → Mod settings →
-Player Coordinates HUD**; changes apply immediately, behind the menu.
+Player Coordinates HUD**; changes take effect as soon as you close the menu,
+with no restart.
 
 ## Known Limitations
 

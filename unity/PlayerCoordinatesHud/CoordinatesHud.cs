@@ -7,8 +7,10 @@ namespace PlayerCoordinatesHud
     /// <summary>
     /// Always-on HUD readout showing the player's floored world coordinates and the straight-line
     /// distance to the world origin (The Core), in CK's own map format: <c>123, -456 (478)</c>.
-    /// Its placement is a player setting — four fixed corners plus one that follows CK's minimap;
-    /// see <see cref="ApplyPosition"/>.
+    /// Its placement is a player setting: four corners plus a spot below the minimap. All anchors are
+    /// constants; what varies at runtime is which of them applies — the below-minimap spot steps aside
+    /// to the top-right corner while the minimap is not drawn, and the bottom-right corner rides above
+    /// CK's button hints, whose height changes as they come and go. See <see cref="ApplyPosition"/>.
     ///
     /// <para>This is NOT a modal CoreLib UI — it is instantiated directly by
     /// <see cref="PlayerCoordinatesHudMod"/> under the in-game HUD root and must never be passed to
@@ -34,21 +36,20 @@ namespace PlayerCoordinatesHud
         // per-frame unconditional Render would churn constantly. null = nothing painted yet.
         private string _lastRendered;
 
-        // The edges every position is built from. Fixed values, the way CK places its own HUD: the
-        // uiCamera shows a constant world area and the game offers no UI-scale option, so these do
-        // not move at runtime. Each was read off the vanilla prefab rather than chosen.
+        // The edges every position is built from. Fixed values, the way CK places its own HUD, and it
+        // stays correct on every display: the uiCamera is not screen-driven at all. Its PugCamera runs
+        // OutputMode.Fixed at 480x270, and PugRP forces the camera aspect from those numbers rather
+        // than from the window, so the visible area is always exactly +-15 x +-8.4375 world units.
         //
-        // They must stay in step with THIS prefab too: ApplyPosition writes the root's position every
-        // frame, so changing the root in the Editor alone has no effect — and the symmetric 7.8 only
-        // works because the Coordinates child hangs 0.0625 below the root, the same depth
-        // ItemChecklist's CounterText hangs below its container. Move that child and every position
-        // moves with it.
+        // The three vanilla edges were read off the vanilla prefab; the row height was not:
         //
-        //   left    HealthBarBackground sits at -10.9375 and is 6.375 wide -> its left edge, so the
-        //           readout lines up with the status bars below it.
+        //   left    HealthBarBackground sits at -10.9375 and is 6.375 wide -> its left edge -14.125.
         //   right   the minimap's right edge is 14.5 (centre 12.5, width 4); one pixel inside it is
         //           where CK puts its own text against that frame (PvPEnabledUI at 14.4375).
         //   bottom  the minimap's bottom edge is 4.9375 (centre 6.0625, height 2.25).
+        //   rows    7.8 is NOT a vanilla value — it is ItemChecklist's HUD row (its hudRoot sits at
+        //           (10, 7.8)), chosen so a top corner lines up with the mod-HUD row already there.
+        //           BottomY mirrors it. The 1.0.0 prefab used -7.5.
         private const float LeftEdgeX = -14.125f;
         private const float RightEdgeX = 14.4375f;
         private const float TopY = 7.8f;
@@ -61,27 +62,40 @@ namespace PlayerCoordinatesHud
         // a pure gap rather than a value silently carrying the font size around with it.
         private const float UIGap = 0.0625f;
 
-        // Stands in for half the text height until the first Render has measured one (CK's UI font
-        // is 8px tall, i.e. 0.5 world units at 16 px/unit).
-        private const float FallbackHalfTextHeight = 0.25f;
+        // Stands in for half the text height until the first Render has measured one. The prefab uses
+        // fontFace thinTiny (Font5), whose charDims.y is 10 -> 10/16 = 0.625 tall, so half is 0.3125.
+        private const float FallbackHalfTextHeight = 0.3125f;
+
+        // Fallback for the Coordinates child's depth below the root, used only if that text is not
+        // wired; the live value is read from the transform so it cannot drift from the prefab.
+        private const float FallbackRowDrop = 0.0625f;
 
         // CK exposes no manager field for the button hints, so the component is looked up once and
-        // cached. The flag separates "not looked up yet" from "looked up, genuinely not there".
+        // cached. The flag is only set on a HIT: FindFirstObjectByType excludes inactive objects, so
+        // latching a miss would disable the bottom-right dodge for the rest of the session.
         private InGameButtonHintsUI _buttonHints;
         private bool _buttonHintsSearched;
 
-        // Reused across frames so measuring the hints allocates nothing after the first pass.
+        // Reused across frames so measuring the hints allocates nothing after the first pass. Keep the
+        // field typed as List<Renderer>: the foreach below then uses List's struct enumerator, while an
+        // IList<Renderer> would box one per frame.
         private readonly List<Renderer> _boundsScratch = new List<Renderer>();
 
-        // The prefab's own Z, captured before anything moves the root. Every anchor keeps it: the
-        // minimap anchor comes from world-space bounds, whose Z belongs to the map, not to this HUD.
+        // The prefab's own Z, captured before anything moves the root. Every anchor keeps it: anchors
+        // are 2-D and say nothing about depth, so the prefab is the only source for it.
         private float _anchorZ;
 
-        // Applied placement, so the per-frame pass only writes when something actually changed.
-        // _alignmentApplied starts false to force one initial pass: the prefab ships left-aligned,
-        // but the persisted setting may well be a right-hand corner.
-        private bool _appliedRightAligned;
-        private bool _alignmentApplied;
+        // Applied alignment, so the per-frame pass only repaints when it actually changed. null = never
+        // applied, which forces one initial pass: the prefab ships left-aligned, but the persisted
+        // setting may well be a right-hand corner.
+        private bool? _appliedRightAligned;
+
+        // One-shot diagnostics. These conditions are structural — a serialized field that is null once
+        // is null for the session — so a plain bool is enough and the frame path stays log-free after
+        // the first occurrence.
+        private bool _loggedMissingMapUI;
+        private bool _loggedMissingHints;
+        private bool _loggedUnknownPosition;
 
         protected void Awake()
         {
@@ -161,14 +175,20 @@ namespace PlayerCoordinatesHud
             if (transform.localPosition != target)
                 transform.localPosition = target;
 
-            if (!_alignmentApplied || _appliedRightAligned != rightAligned)
+            if (_appliedRightAligned != rightAligned)
             {
                 SetAlignment(rightAligned);
                 _appliedRightAligned = rightAligned;
-                _alignmentApplied = true;
                 RepaintForNewAlignment();
             }
         }
+
+        /// <summary>
+        /// How far the visible text hangs below the root, read from the prefab rather than assumed.
+        /// The anchor formulas describe where the TEXT should sit, but what gets written is the root —
+        /// so without this the readout lands one pixel off every piece of UI it is measured against.
+        /// </summary>
+        private float RowDrop() => coordinateText != null ? -coordinateText.transform.localPosition.y : FallbackRowDrop;
 
         /// <summary>
         /// Redraws the current string after an alignment change.
@@ -205,18 +225,32 @@ namespace PlayerCoordinatesHud
         {
             anchor = default;
 
-            var mapUI = Manager.ui != null ? Manager.ui.mapUI : null;
-            var border = mapUI != null ? mapUI.miniMapBorder : null;
+            var border = Manager.ui.mapUI != null ? Manager.ui.mapUI.miniMapBorder : null;
+            if (border == null)
+            {
+                // Structural, not a normal state: both are serialized fields that vanilla always
+                // wires. Reaching this means a game update moved them, and the readout would silently
+                // sit in a corner forever without saying why.
+                if (!_loggedMissingMapUI)
+                {
+                    _loggedMissingMapUI = true;
+                    Debug.LogWarning("[PlayerCoordinatesHud] MapUI.miniMapBorder not found — the below-minimap position falls back to the top-right corner.");
+                }
+                return false;
+            }
 
-            // activeInHierarchy is the single signal CK itself uses here — PvPTextUI tests exactly
-            // this. MapUI clears it in all three cases at once: the player switched the minimap off,
-            // the big map replaced it, or an inventory is open.
-            if (border == null || !border.gameObject.activeInHierarchy)
+            // Beyond here it is ordinary: activeInHierarchy is the single signal covering all three
+            // ways the minimap leaves the screen at once. MapUI.LateUpdate deactivates the border's
+            // parent container when the player turns the minimap off (Manager.prefs.showMinimap) or
+            // opens an inventory, and UpdateUIScaling deactivates the border itself for the big map.
+            // CK's own PvPTextUI reads the same flag — to pick its offset, not its visibility.
+            if (!border.gameObject.activeInHierarchy)
                 return false;
 
             // x is the shared right edge, so leaving this position for the top-right fallback is a
-            // purely vertical move.
-            anchor = new Vector2(RightEdgeX, MinimapBottomY - UIGap - TextCentreDrop());
+            // purely vertical move. RowDrop compensates that the ANCHOR moves the root while the
+            // formula describes the text.
+            anchor = new Vector2(RightEdgeX, MinimapBottomY - UIGap - TextCentreDrop() + RowDrop());
             return true;
         }
 
@@ -236,25 +270,48 @@ namespace PlayerCoordinatesHud
             if (!_buttonHintsSearched)
             {
                 _buttonHints = FindFirstObjectByType<InGameButtonHintsUI>();
-                _buttonHintsSearched = true;
+
+                // Only latch a HIT. The parameterless overload skips inactive objects, so a miss can
+                // simply mean "asked one frame too early" — latching that would kill the dodge for the
+                // whole session, silently, with the readout parked on top of the hints.
+                if (_buttonHints != null)
+                    _buttonHintsSearched = true;
+                else if (!_loggedMissingHints)
+                {
+                    _loggedMissingHints = true;
+                    Debug.LogWarning(
+                        "[PlayerCoordinatesHud] InGameButtonHintsUI not found yet — retrying; the bottom-right position uses the plain corner until it is."
+                    );
+                }
             }
 
             var container = _buttonHints != null ? _buttonHints.container : null;
-            if (container == null || !container.activeInHierarchy || !TryGetDrawnBounds(container, out var bounds))
+            if (container == null)
                 return false;
 
-            // Only the height comes from the hints — and it is the one edge in this file that genuinely
-            // has to be measured, because the hints grow and shrink while you play. x stays the shared
-            // right edge so the readout does not drift sideways as buttons appear and disappear, and
-            // the gap matches the minimap's so both dynamic positions keep the same visual distance.
-            anchor = new Vector2(RightEdgeX, ToLocal(new Vector2(0f, bounds.max.y + UIGap + TextCentreDrop())).y);
+            // From here the false cases are ordinary and deliberately quiet: the container is switched
+            // by the player's own "show key hints" option every frame, and nothing drawn means nothing
+            // to dodge — the plain corner is then the right answer.
+            if (!container.activeInHierarchy || !TryGetDrawnBounds(container, out var bounds))
+                return false;
+
+            // Only the height comes from the hints — the one edge in this file that genuinely has to be
+            // measured, because the hints grow and shrink while you play. x stays the shared right edge
+            // so the readout does not drift sideways as buttons appear and disappear, and the gap
+            // matches the minimap's so both dynamic positions keep the same distance from what they
+            // dodge. Convert FIRST, then add: the gap and the drop are lengths of this local frame,
+            // and adding them to a world value would let a scaled parent stretch them.
+            anchor = new Vector2(RightEdgeX, ToLocal(new Vector2(0f, bounds.max.y)).y + UIGap + TextCentreDrop() + RowDrop());
             return true;
         }
 
         /// <summary>
         /// Combined world bounds of everything currently drawn under <paramref name="root"/>, or false
-        /// if nothing is. <c>Renderer.bounds</c> already accounts for scaling, and disabled renderers
-        /// are skipped, so this measures what the player sees rather than the container's nominal size.
+        /// if nothing is. Two filters apply: <c>GetComponentsInChildren(false, …)</c> already skips
+        /// every renderer on an INACTIVE GameObject — which is the normal state for most hint buttons,
+        /// since CK only lays out the ones that apply right now — and disabled renderers are dropped
+        /// below. <c>Renderer.bounds</c> accounts for scaling, so this measures what the player sees
+        /// rather than the container's nominal size (the container has no renderer of its own at all).
         /// </summary>
         private bool TryGetDrawnBounds(GameObject root, out Bounds bounds)
         {
@@ -279,7 +336,7 @@ namespace PlayerCoordinatesHud
             return any;
         }
 
-        private static Vector2 CornerAnchor(ModConfig.Position position)
+        private Vector2 CornerAnchor(ModConfig.Position position)
         {
             switch (position)
             {
@@ -289,7 +346,18 @@ namespace PlayerCoordinatesHud
                     return new Vector2(LeftEdgeX, TopY);
                 case ModConfig.Position.TopRight:
                     return new Vector2(RightEdgeX, TopY);
+                case ModConfig.Position.BottomLeft:
                 default:
+                    // BottomLeft is listed explicitly so every member is visible here. A Position added
+                    // later without its own case lands in this branch and gets the 1.0.0 corner, which
+                    // is the safe answer — but it is reported once, because otherwise the omission only
+                    // shows as "the new option does nothing". Guarded by a flag rather than logged
+                    // outright: this runs every frame.
+                    if (position != ModConfig.Position.BottomLeft && !_loggedUnknownPosition)
+                    {
+                        _loggedUnknownPosition = true;
+                        Debug.LogError($"[PlayerCoordinatesHud] Position '{position}' has no anchor — falling back to BottomLeft. Add a case to CornerAnchor.");
+                    }
                     return new Vector2(LeftEdgeX, BottomY);
             }
         }
@@ -299,9 +367,12 @@ namespace PlayerCoordinatesHud
         /// land there — copied from CK's own <c>PvPTextUI</c>, the vanilla element below the minimap:
         /// <c>height / 2 - height % 0.0625</c>.
         ///
-        /// <para>The modulo is not noise: it drops the sub-pixel remainder so the glyphs keep landing
-        /// on CK's 1/16-unit pixel grid. Half a text height alone would park them between pixels,
-        /// which is where point-filtered sprites go blurry.</para>
+        /// <para><strong>The modulo term is always zero — keep it anyway.</strong> It cannot be
+        /// otherwise: <c>dimensions.height</c> is <c>charDims.y / pixelsPerUnit</c> with an integer
+        /// pixel height over 16, so it is always a multiple of 0.0625. It is kept verbatim because
+        /// that is the evidence this formula is Pugstorm's and not ours — worth more at the next game
+        /// update than the line it costs. It does NOT snap anything to the pixel grid; that would be
+        /// <c>RoundToPixelPerfectPosition.RoundFloat</c>, which CK deliberately does not call here.</para>
         ///
         /// <para>Measured from the live text rather than assumed, so a taller font or a language with
         /// different metrics still lines up. <c>dimensions</c> is only filled once something has been

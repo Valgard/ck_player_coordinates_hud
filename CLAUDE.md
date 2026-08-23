@@ -53,17 +53,29 @@ close, `Enabled` off-on), stays hidden through both load screens and the
 intro cutscene, and its numbers agree with the map view (Tab) for the same
 tile. Verified on Core Keeper 1.2.1.5.
 
-**Placement needs its own pass**, because the four corner anchors are fixed
-values that only in-game inspection can confirm (`CoordinatesHud.AnchorBottom*`
-/ `AnchorTop*`). Only `AnchorBottomLeft` is inherited from the shipped 1.0.0
-prefab; the other three mirror it and are unverified until someone looks. Walk
-all five `Position` values and check: each corner clears the vanilla UI and sits
-inside the screen; the right-hand corners are right-aligned so a long string
-(stand far from the Core) grows inwards, not off the edge; `BelowMinimap` hangs
-under the minimap with a sane gap, follows it, and jumps to the top-right corner
-when the minimap goes away — switch it off in the options, and open the big map
-with Tab. A switch that only takes effect after the next tile boundary means
-the `_lastRendered` reset in `ApplyPosition` is not firing.
+**Placement needs its own pass.** The anchors (`LeftEdgeX`, `RightEdgeX`,
+`TopY`, `BottomY`, `MinimapBottomY`) were read off the vanilla prefab, never
+measured in a running game — so the whole set rests on the dump matching
+runtime. **One check settles that:** set `BottomLeft` and see whether the
+readout's left edge is *exactly* flush with the status bars, then set
+`BelowMinimap` and check the gap to the minimap frame. Flush on both → the
+parent transform is identity and the dump is faithful. Both off by the same
+amount → the parent is not identity. Off by different amounts → the geometry
+is wrong.
+
+Then walk all five `Position` values: each corner clears the vanilla UI; the
+right-hand ones are right-aligned so a long string (stand far from the Core,
+ideally west/north for the minus signs) grows inwards; `BelowMinimap` sits one
+pixel under the minimap and jumps to the top-right corner when it goes away —
+switch the minimap off in the options, and open the big map with Tab.
+`BottomRight` needs its own look: walk up to a chest so hint rows appear and
+disappear **without moving**, and toggle key hints off.
+
+Two failure modes worth naming, because both are silent:
+- A position change that only takes effect after the next tile boundary means
+  `RepaintForNewAlignment` is not firing (or not passing `force: true`).
+- Changing the position while the settings screen is open shows nothing — the
+  readout is hidden behind any menu. It applies on close, in the same frame.
 
 ## Architecture
 
@@ -73,7 +85,9 @@ Four runtime classes in the `PlayerCoordinatesHud` namespace:
   Settings section (a `Toggle` for `enabled`, default on, and a `Choice` for
   `position`, default `BottomLeft`) and binds both handles into `ModConfig`.
   Neither setting is marked `RequiresRestart`: both are read live every frame,
-  so a change is visible behind the open menu. `ModObjectLoaded` captures the HUD prefab by
+  so a change takes effect the moment the menu closes — **not** while it is
+  open, since the visibility gate hides the readout behind any menu.
+  `ModObjectLoaded` captures the HUD prefab by
   GameObject name (`"PlayerCoordinatesHUD"`) — routed this way, **not** via
   CoreLib's `UserInterfaceModule.RegisterModUI`, because that path hides the
   UI on `HideAllInventoryAndCraftingUI`, the opposite of this mod's always-on
@@ -110,12 +124,14 @@ Four runtime classes in the `PlayerCoordinatesHud` namespace:
   permanently, unlike CK's own `CoordinatesUI`, which only renders while the
   map is open, so an unconditional `Render` would churn every frame.
   `ApplyPosition` (also from `LateUpdate`, only while visible) moves the root
-  to the configured anchor and matches the text alignment to it. Four of the
-  five positions are fixed vectors; `BelowMinimap` derives its anchor from
-  `Manager.ui.mapUI.miniMapBorder.bounds` — **world-space** bounds, so the
-  minimap's own per-frame rescaling is already baked in — converted into the
-  HUD's local space via the parent, with the prefab's original Z kept (the
-  minimap's Z belongs to the map, not to this HUD).
+  to the configured anchor and matches the text alignment to it. **All anchors
+  are constants** read off the vanilla prefab — the uiCamera is not
+  screen-driven (its `PugCamera` runs `OutputMode.Fixed` at 480×270 and PugRP
+  forces the aspect from those numbers), so the visible area is always
+  ±15 × ±8.4375 and the edges never move. Two things are still measured at
+  runtime, and only these: the height of CK's button hints, which changes as
+  they come and go, and the text height via `PugText.dimensions`. The prefab's
+  own Z is kept, since anchors are 2-D.
 - **`WorldState`** — the shared `IsInPlayableWorld` predicate, copied from
   ItemChecklist (its Iter-11.6/Iter-15 fixes): `isInGame &&
   isSceneHandlerReady && !cutsceneIsPlaying && Manager.main.player != null &&
@@ -185,11 +201,15 @@ carriers.
   left↔right change — two anchors on the same side share an alignment, and the
   glyphs are children of the root, so they follow a pure move for free.
 - **`miniMapBorder.gameObject.activeInHierarchy` is one signal for three
-  cases.** CK clears it when the player switched the minimap off in the
-  options, when the big map replaced it, and when an inventory is open — so
-  `BelowMinimap` needs no separate `Manager.prefs.showMinimap` or
-  `mapUI.IsShowingBigMap` term. CK's own `PvPTextUI`, the vanilla element that
-  sits below the minimap, tests exactly this and nothing else.
+  cases** — but they come from two different places, which is why grepping one
+  method makes it look wrong. `MapUI.LateUpdate` deactivates the border's
+  parent `container` when `Manager.prefs.showMinimap` is off (a real options
+  entry, `RadicalOptionsMenuOption_ShowMinimap`) or an inventory is open;
+  `MapUI.UpdateUIScaling` deactivates the border itself for the big map.
+  `activeInHierarchy` sees both, so `BelowMinimap` needs no separate term.
+  CK's own `PvPTextUI` reads the same flag — but note what for: it picks
+  between two vertical offsets, not its own visibility (that is
+  `pvpMode && !isShowingMap`).
 
 ## Not yet built
 

@@ -45,6 +45,6 @@ PlayerCoordinatesHud-Config/position:
     en: "Top right"
     de: "Oben rechts"
   BelowMinimap:
-    hint: "Position option - follows the minimap, and uses the top-right corner while the minimap is off screen."
+    hint: "Position option - sits under the minimap, and uses the top-right corner while the minimap is off screen."
     en: "Below minimap"
     de: "Unter der Minimap"

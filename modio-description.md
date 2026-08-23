@@ -13,9 +13,10 @@ current position on screen, permanently.
   you move — no need to open the map.
 - Same numbers the map itself uses: `x, z (distance)`, e.g. `57, -24 (62)`.
 - Put it where you want it: any of the four screen corners, or below the
-  minimap. The below-minimap option follows the minimap as the game rescales
-  it, and steps aside to the top-right corner whenever the minimap isn't on
-  screen — so it never lands on top of the big map.
+  minimap — lined up with the game's own UI edges. The below-minimap option
+  steps aside to the top-right corner whenever the minimap isn't on screen, so
+  it never lands on top of the big map, and the bottom-right corner keeps clear
+  of the on-screen button hints.
 - Stays out of the way. Auto-hides during inventory, menus, and loading
   screens; it never overlaps the vanilla UI. Keeps showing while the big
   map (Tab) is open, though — the map's own readout follows your mouse, so

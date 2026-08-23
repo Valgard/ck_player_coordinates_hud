@@ -8,15 +8,19 @@ All notable changes to this mod are documented here.
 
 - **The readout's position is now a setting.** Pick one of the four screen
   corners, or a spot below the minimap, in **Options → Mod settings → Player
-  Coordinates HUD**. The default is unchanged, so an existing install stays
-  exactly where it was.
-- **The "below minimap" position follows the minimap**, including as the game
-  rescales it. Whenever the minimap is not on screen — switched off in the
-  options, or replaced by the big map (Tab) — the readout uses the top-right
-  corner instead, so it stays readable rather than disappearing.
+  Coordinates HUD**. The default is still the bottom-left corner.
+- **The "below minimap" position steps aside when the minimap does.** Whenever
+  the minimap is not on screen — switched off in the options, or replaced by
+  the big map (Tab) — the readout moves to the top-right corner instead, so it
+  stays readable rather than disappearing.
+- **The bottom-right corner keeps clear of the on-screen button hints**, moving
+  just above them and dropping into the corner when they are hidden.
 
 ### Changed
 
+- **Every position now lines up with the game's own UI edges** rather than sitting
+  at a hand-picked offset. The default corner therefore shifts slightly compared
+  to 1.0.1: it is now flush with the status bars.
 - In the two right-hand corners the readout is right-aligned, so a long
   coordinate string grows inwards instead of running off the screen edge.
 
