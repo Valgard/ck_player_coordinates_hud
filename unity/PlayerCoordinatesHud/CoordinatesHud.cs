@@ -40,10 +40,12 @@ namespace PlayerCoordinatesHud
         private static readonly Vector2 AnchorBottomLeft = new Vector2(-13.5f, -7.5f);
         private static readonly Vector2 AnchorBottomRight = new Vector2(13.5f, -7.5f);
 
-        // The top row sits at 7.8, not the mirrored 7.5: that is the height ItemChecklist's own HUD
-        // container uses, so a readout in a top corner lines up with the established mod-HUD row.
-        private static readonly Vector2 AnchorTopLeft = new Vector2(-13.5f, 7.8f);
-        private static readonly Vector2 AnchorTopRight = new Vector2(13.5f, 7.8f);
+        // The top row sits at 7.925, not the mirrored 7.5, so the text lines up with ItemChecklist's
+        // HUD row. Container heights are NOT the thing to match: ICL's container sits at 7.8 with its
+        // CounterText 0.0625 below it (world 7.7375), while this prefab's Coordinates child hangs
+        // 0.1875 below its root — so equal text height means 7.7375 + 0.1875.
+        private static readonly Vector2 AnchorTopLeft = new Vector2(-13.5f, 7.925f);
+        private static readonly Vector2 AnchorTopRight = new Vector2(13.5f, 7.925f);
 
         // Clearance between the minimap's bottom edge and the readout's centre line. The PugTexts are
         // verticalAlignment: center, so this absorbs half the text height as well as the visual gap.
@@ -207,7 +209,9 @@ namespace PlayerCoordinatesHud
             if (bounds.size.x < 0.01f || bounds.size.y < 0.01f)
                 return false;
 
-            anchor = ToLocal(new Vector2(bounds.max.x, bounds.min.y - MinimapGap));
+            // Only the height comes from the minimap; x is the shared right edge, so leaving this
+            // position for the top-right fallback is a purely vertical move.
+            anchor = new Vector2(RightEdge(), ToLocal(new Vector2(0f, bounds.min.y - MinimapGap)).y);
             return true;
         }
 
@@ -234,9 +238,9 @@ namespace PlayerCoordinatesHud
             if (container == null || !container.activeInHierarchy || !TryGetDrawnBounds(container, out var bounds))
                 return false;
 
-            // Only the height comes from the hints; x stays the corner's, so the readout does not
-            // drift sideways as buttons appear and disappear.
-            anchor = new Vector2(AnchorBottomRight.x, ToLocal(new Vector2(0f, bounds.max.y + HintsGap)).y);
+            // Only the height comes from the hints; x is the shared right edge, so the readout does
+            // not drift sideways as buttons appear and disappear.
+            anchor = new Vector2(RightEdge(), ToLocal(new Vector2(0f, bounds.max.y + HintsGap)).y);
             return true;
         }
 
@@ -268,19 +272,46 @@ namespace PlayerCoordinatesHud
             return any;
         }
 
-        private static Vector2 CornerAnchor(ModConfig.Position position)
+        private Vector2 CornerAnchor(ModConfig.Position position)
         {
             switch (position)
             {
                 case ModConfig.Position.BottomRight:
-                    return AnchorBottomRight;
+                    return new Vector2(RightEdge(), AnchorBottomRight.y);
                 case ModConfig.Position.TopLeft:
                     return AnchorTopLeft;
                 case ModConfig.Position.TopRight:
-                    return AnchorTopRight;
+                    return new Vector2(RightEdge(), AnchorTopRight.y);
                 default:
                     return AnchorBottomLeft;
             }
+        }
+
+        /// <summary>
+        /// The x every right-hand position shares: the right edge of CK's minimap, which is the
+        /// game's own established right-hand UI edge.
+        ///
+        /// <para>Without this the positions disagree — "below minimap" would take its x from the
+        /// minimap while the corners took a mirrored constant, so leaving the minimap position (or
+        /// switching the minimap off) shifted the readout sideways instead of just moving it up.</para>
+        ///
+        /// <para>Read from the renderer's serialized <c>size</c> and its transform rather than from
+        /// <c>bounds</c>, so the edge is still known while the minimap is hidden — that is exactly
+        /// when the fallback needs it. Falls back to the mirrored corner value if the minimap is
+        /// unavailable or reports nothing measurable.</para>
+        /// </summary>
+        private float RightEdge()
+        {
+            var mapUI = Manager.ui != null ? Manager.ui.mapUI : null;
+            var border = mapUI != null ? mapUI.miniMapBorder : null;
+            if (border == null)
+                return AnchorBottomRight.x;
+
+            float halfWidth = border.size.x * 0.5f * Mathf.Abs(border.transform.lossyScale.x);
+            if (halfWidth < 0.01f)
+                return AnchorBottomRight.x;
+
+            return ToLocal(new Vector2(border.transform.position.x + halfWidth, 0f)).x;
         }
 
         /// <summary>
