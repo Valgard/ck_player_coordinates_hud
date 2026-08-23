@@ -34,18 +34,18 @@ namespace PlayerCoordinatesHud
         // per-frame unconditional Render would churn constantly. null = nothing painted yet.
         private string _lastRendered;
 
-        // Corner anchors, in the same local space the prefab's own (-13.5, -7.5) sits in — fixed
-        // values, exactly as CK positions its own HUD. BottomLeft is the shipped 1.0.0 value and is
-        // confirmed correct in game; the other three mirror it and still need calibration.
-        private static readonly Vector2 AnchorBottomLeft = new Vector2(-13.5f, -7.5f);
-        private static readonly Vector2 AnchorBottomRight = new Vector2(13.5f, -7.5f);
-
-        // The top row sits at 7.925, not the mirrored 7.5, so the text lines up with ItemChecklist's
-        // HUD row. Container heights are NOT the thing to match: ICL's container sits at 7.8 with its
-        // CounterText 0.0625 below it (world 7.7375), while this prefab's Coordinates child hangs
-        // 0.1875 below its root — so equal text height means 7.7375 + 0.1875.
-        private static readonly Vector2 AnchorTopLeft = new Vector2(-13.5f, 7.925f);
-        private static readonly Vector2 AnchorTopRight = new Vector2(13.5f, 7.925f);
+        // Corner anchors, in the same local space the prefab's root sits in — fixed values, exactly
+        // as CK positions its own HUD. They must stay in step with the prefab: ApplyPosition writes
+        // the root's position every frame, so editing it in the Editor alone has no effect.
+        //
+        // The symmetric 7.8 works because the prefab's Coordinates child hangs 0.0625 below the root,
+        // the same depth ItemChecklist's CounterText hangs below its container — so matching ICL's
+        // container height matches the visible text line. Anchors and that offset are one calibration:
+        // changing the child's offset moves every position and needs these values revisited.
+        private static readonly Vector2 AnchorBottomLeft = new Vector2(-13.5f, -7.8f);
+        private static readonly Vector2 AnchorBottomRight = new Vector2(13.5f, -7.8f);
+        private static readonly Vector2 AnchorTopLeft = new Vector2(-13.5f, 7.8f);
+        private static readonly Vector2 AnchorTopRight = new Vector2(13.5f, 7.8f);
 
         // Clearance between the minimap's bottom edge and the readout's centre line. The PugTexts are
         // verticalAlignment: center, so this absorbs half the text height as well as the visual gap.
