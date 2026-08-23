@@ -9,8 +9,9 @@ namespace PlayerCoordinatesHud
     /// distance to the world origin (The Core), in CK's own map format: <c>123, -456 (478)</c>.
     /// Its placement is a player setting: four corners plus a spot below the minimap. All anchors are
     /// constants; what varies at runtime is which of them applies — the below-minimap spot steps aside
-    /// to the top-right corner while the minimap is not drawn, and the bottom-right corner rides above
-    /// CK's button hints, whose height changes as they come and go. See <see cref="ApplyPosition"/>.
+    /// to the top-right corner while the minimap is not drawn, it steps below CK's PvP label when a
+    /// world has PvP enabled, and the bottom-right corner rides above CK's button hints, whose
+    /// occupied height depends on which of them apply. See <see cref="ApplyPosition"/>.
     ///
     /// <para>This is NOT a modal CoreLib UI — it is instantiated directly by
     /// <see cref="PlayerCoordinatesHudMod"/> under the in-game HUD root and must never be passed to
@@ -80,6 +81,11 @@ namespace PlayerCoordinatesHud
         // latching a miss would disable the bottom-right dodge for the rest of the session.
         private InGameButtonHintsUI _buttonHints;
         private bool _buttonHintsSearched;
+
+        // Same treatment for CK's PvP label, which shares the spot below the minimap whenever the
+        // world has PvP enabled (a pause-menu switch, so it can appear mid-session).
+        private PvPTextUI _pvpText;
+        private bool _pvpTextSearched;
 
         // Reused across frames so measuring the hints allocates nothing after the first pass. Keep the
         // field typed as List<Renderer>: the foreach below then uses List's struct enumerator, while an
@@ -288,10 +294,50 @@ namespace PlayerCoordinatesHud
             if (!border.gameObject.activeInHierarchy)
                 return false;
 
+            // Normally the minimap's bottom edge — but CK's own PvP label lives in exactly this spot
+            // when the world has PvP enabled, at (14.4375, 4.875), which is where this readout would
+            // otherwise sit. Verified in game: the two render on top of each other, both unreadable.
+            // PvP is a pause-menu switch, so it can appear and vanish mid-session; measure rather
+            // than decide once.
+            float edge = MinimapBottomY;
+            if (TryGetPvpLabelBottom(out var pvpBottom))
+                edge = pvpBottom;
+
             // x is the shared right edge, so leaving this position for the top-right fallback is a
             // purely vertical move. RowDrop compensates that the ANCHOR moves the root while the
             // formula describes the text.
-            anchor = new Vector2(RightEdgeX, MinimapBottomY - UIGap - TextCentreDrop() + RowDrop());
+            anchor = new Vector2(RightEdgeX, edge - UIGap - TextCentreDrop() + RowDrop());
+            return true;
+        }
+
+        /// <summary>
+        /// The bottom edge of CK's PvP label in this HUD's local space, or false when it is not drawn
+        /// — which is the usual case, since it only appears in a world with PvP switched on.
+        ///
+        /// <para>Measured rather than assumed for the same reason as the button hints: the label
+        /// carries localised text, so its height is not ours to predict, and PvP is toggled from the
+        /// pause menu at any time.</para>
+        /// </summary>
+        private bool TryGetPvpLabelBottom(out float bottomLocal)
+        {
+            bottomLocal = 0f;
+
+            if (!_pvpTextSearched)
+            {
+                _pvpText = FindFirstObjectByType<PvPTextUI>();
+                // Latch only a hit, as with the button hints: a miss may just mean the object was
+                // inactive in that one frame, and latching it would lose the dodge for the session.
+                if (_pvpText != null)
+                    _pvpTextSearched = true;
+            }
+
+            var label = _pvpText != null ? _pvpText.text : null;
+            if (label == null || !label.gameObject.activeInHierarchy)
+                return false;
+            if (!TryGetDrawnBounds(label.gameObject, out var bounds))
+                return false;
+
+            bottomLocal = ToLocal(new Vector2(0f, bounds.min.y)).y;
             return true;
         }
 
@@ -299,10 +345,13 @@ namespace PlayerCoordinatesHud
         /// The anchor just above CK's on-screen button hints, keeping the bottom-right corner's x;
         /// false when the hints are not drawn, in which case the plain corner anchor applies.
         ///
-        /// <para>They cannot be treated as a fixed block: <c>InGameButtonHintsUI</c> lays out only the
-        /// buttons that apply right now, right-to-left across several rows, and the whole container
-        /// follows the player's own "show key hints" option. So the readout measures what is actually
-        /// on screen and sits above that, dropping into the true corner when nothing is shown.</para>
+        /// <para>They cannot be treated as a fixed block, but not for the obvious reason. Buttons
+        /// behave in two different ways: some appear and disappear with the context, while others
+        /// stay put and merely switch between an active and an inactive look — the interact hand does
+        /// the latter, so walking up to a chest changes its colour and adds its key label without
+        /// moving the block's top edge at all. The container as a whole also follows the player's own
+        /// "show key hints" option. So the readout measures what is actually drawn and sits above
+        /// that, dropping into the true corner when nothing is shown.</para>
         ///
         /// <para><strong>One frame of lag is expected here and is not a bug.</strong> CK lays the
         /// buttons out in its own <c>LateUpdate</c>, and two <c>LateUpdate</c>s have no defined order
