@@ -34,18 +34,26 @@ namespace PlayerCoordinatesHud
         // per-frame unconditional Render would churn constantly. null = nothing painted yet.
         private string _lastRendered;
 
-        // Corner anchors, in the same local space the prefab's root sits in — fixed values, exactly
-        // as CK positions its own HUD. They must stay in step with the prefab: ApplyPosition writes
-        // the root's position every frame, so editing it in the Editor alone has no effect.
+        // The edges every position is built from. Fixed values, the way CK places its own HUD: the
+        // uiCamera shows a constant world area and the game offers no UI-scale option, so these do
+        // not move at runtime. Each was read off the vanilla prefab rather than chosen.
         //
-        // The symmetric 7.8 works because the prefab's Coordinates child hangs 0.0625 below the root,
-        // the same depth ItemChecklist's CounterText hangs below its container — so matching ICL's
-        // container height matches the visible text line. Anchors and that offset are one calibration:
-        // changing the child's offset moves every position and needs these values revisited.
-        private static readonly Vector2 AnchorBottomLeft = new Vector2(-13.5f, -7.8f);
-        private static readonly Vector2 AnchorBottomRight = new Vector2(13.5f, -7.8f);
-        private static readonly Vector2 AnchorTopLeft = new Vector2(-13.5f, 7.8f);
-        private static readonly Vector2 AnchorTopRight = new Vector2(13.5f, 7.8f);
+        // They must stay in step with THIS prefab too: ApplyPosition writes the root's position every
+        // frame, so changing the root in the Editor alone has no effect — and the symmetric 7.8 only
+        // works because the Coordinates child hangs 0.0625 below the root, the same depth
+        // ItemChecklist's CounterText hangs below its container. Move that child and every position
+        // moves with it.
+        //
+        //   left    HealthBarBackground sits at -10.9375 and is 6.375 wide -> its left edge, so the
+        //           readout lines up with the status bars below it.
+        //   right   the minimap's right edge is 14.5 (centre 12.5, width 4); one pixel inside it is
+        //           where CK puts its own text against that frame (PvPEnabledUI at 14.4375).
+        //   bottom  the minimap's bottom edge is 4.9375 (centre 6.0625, height 2.25).
+        private const float LeftEdgeX = -14.125f;
+        private const float RightEdgeX = 14.4375f;
+        private const float TopY = 7.8f;
+        private const float BottomY = -7.8f;
+        private const float MinimapBottomY = 4.9375f;
 
         // Clearance between a piece of UI and the nearest edge of the readout — one pixel, which is
         // what CK itself leaves: its PvPEnabledUI sits at y 4.875 against a minimap bottom edge of
@@ -186,8 +194,12 @@ namespace PlayerCoordinatesHud
         }
 
         /// <summary>
-        /// The anchor directly below CK's minimap, converted into this HUD's own local space; false
-        /// when the minimap is not on screen.
+        /// The anchor directly below CK's minimap; false when the minimap is not on screen, which
+        /// sends the readout to the top-right corner instead.
+        ///
+        /// <para>Structured the way CK's own <c>PvPTextUI</c> does it: the minimap's geometry is a
+        /// constant, so only two things are actually asked at runtime — whether it is being drawn,
+        /// and how tall the text is.</para>
         /// </summary>
         private bool TryGetMinimapAnchor(out Vector2 anchor)
         {
@@ -196,25 +208,15 @@ namespace PlayerCoordinatesHud
             var mapUI = Manager.ui != null ? Manager.ui.mapUI : null;
             var border = mapUI != null ? mapUI.miniMapBorder : null;
 
-            // activeInHierarchy is the single signal CK itself uses here — PvPTextUI, the game's own
-            // element below the minimap, tests exactly this. MapUI clears it in all three cases at
-            // once: the player switched the minimap off, the big map replaced it, or an inventory is open.
+            // activeInHierarchy is the single signal CK itself uses here — PvPTextUI tests exactly
+            // this. MapUI clears it in all three cases at once: the player switched the minimap off,
+            // the big map replaced it, or an inventory is open.
             if (border == null || !border.gameObject.activeInHierarchy)
                 return false;
 
-            // World-space bounds, so the minimap's own runtime scaling (MapUI.UpdateUIScaling rescales
-            // it every frame from CalcGameplayUITargetScaleMultiplier) is already accounted for.
-            var bounds = border.bounds;
-
-            // A renderer can be active and still have nothing to measure — no sprite assigned yet, or
-            // scaled to nothing by UpdateUIScaling. Its bounds then collapse to a point at the origin,
-            // and using that would drop the readout into the middle of the screen instead of a corner.
-            if (bounds.size.x < 0.01f || bounds.size.y < 0.01f)
-                return false;
-
-            // Only the height comes from the minimap; x is the shared right edge, so leaving this
-            // position for the top-right fallback is a purely vertical move.
-            anchor = new Vector2(RightEdge(), ToLocal(new Vector2(0f, bounds.min.y - UIGap - TextCentreDrop())).y);
+            // x is the shared right edge, so leaving this position for the top-right fallback is a
+            // purely vertical move.
+            anchor = new Vector2(RightEdgeX, MinimapBottomY - UIGap - TextCentreDrop());
             return true;
         }
 
@@ -241,10 +243,11 @@ namespace PlayerCoordinatesHud
             if (container == null || !container.activeInHierarchy || !TryGetDrawnBounds(container, out var bounds))
                 return false;
 
-            // Only the height comes from the hints; x is the shared right edge, so the readout does
-            // not drift sideways as buttons appear and disappear. Same gap as below the minimap, so
-            // the two dynamic positions keep the same visual distance from what they dodge.
-            anchor = new Vector2(RightEdge(), ToLocal(new Vector2(0f, bounds.max.y + UIGap + TextCentreDrop())).y);
+            // Only the height comes from the hints — and it is the one edge in this file that genuinely
+            // has to be measured, because the hints grow and shrink while you play. x stays the shared
+            // right edge so the readout does not drift sideways as buttons appear and disappear, and
+            // the gap matches the minimap's so both dynamic positions keep the same visual distance.
+            anchor = new Vector2(RightEdgeX, ToLocal(new Vector2(0f, bounds.max.y + UIGap + TextCentreDrop())).y);
             return true;
         }
 
@@ -276,18 +279,18 @@ namespace PlayerCoordinatesHud
             return any;
         }
 
-        private Vector2 CornerAnchor(ModConfig.Position position)
+        private static Vector2 CornerAnchor(ModConfig.Position position)
         {
             switch (position)
             {
                 case ModConfig.Position.BottomRight:
-                    return new Vector2(RightEdge(), AnchorBottomRight.y);
+                    return new Vector2(RightEdgeX, BottomY);
                 case ModConfig.Position.TopLeft:
-                    return AnchorTopLeft;
+                    return new Vector2(LeftEdgeX, TopY);
                 case ModConfig.Position.TopRight:
-                    return new Vector2(RightEdge(), AnchorTopRight.y);
+                    return new Vector2(RightEdgeX, TopY);
                 default:
-                    return AnchorBottomLeft;
+                    return new Vector2(LeftEdgeX, BottomY);
             }
         }
 
@@ -310,33 +313,6 @@ namespace PlayerCoordinatesHud
             if (height <= 0f)
                 return FallbackHalfTextHeight;
             return height * 0.5f - height % 0.0625f;
-        }
-
-        /// <summary>
-        /// The x every right-hand position shares: the right edge of CK's minimap, which is the
-        /// game's own established right-hand UI edge.
-        ///
-        /// <para>Without this the positions disagree — "below minimap" would take its x from the
-        /// minimap while the corners took a mirrored constant, so leaving the minimap position (or
-        /// switching the minimap off) shifted the readout sideways instead of just moving it up.</para>
-        ///
-        /// <para>Read from the renderer's serialized <c>size</c> and its transform rather than from
-        /// <c>bounds</c>, so the edge is still known while the minimap is hidden — that is exactly
-        /// when the fallback needs it. Falls back to the mirrored corner value if the minimap is
-        /// unavailable or reports nothing measurable.</para>
-        /// </summary>
-        private float RightEdge()
-        {
-            var mapUI = Manager.ui != null ? Manager.ui.mapUI : null;
-            var border = mapUI != null ? mapUI.miniMapBorder : null;
-            if (border == null)
-                return AnchorBottomRight.x;
-
-            float halfWidth = border.size.x * 0.5f * Mathf.Abs(border.transform.lossyScale.x);
-            if (halfWidth < 0.01f)
-                return AnchorBottomRight.x;
-
-            return ToLocal(new Vector2(border.transform.position.x + halfWidth, 0f)).x;
         }
 
         /// <summary>
