@@ -129,9 +129,21 @@ namespace PlayerCoordinatesHud
         {
             if (hudRoot != null)
             {
-                // Explicit visibility via proven signals. Manager.ui.CalcGameplayUITargetScaleMultiplier()
-                // — CK's own HUD idiom — returns (0,0,0) for a mod HUD and is deliberately not used.
-                bool show = WorldState.IsInPlayableWorld && !Manager.ui.isAnyInventoryShowing && !Manager.menu.IsAnyMenuActive() && ModConfig.Instance.enabled;
+                // Explicit visibility via proven signals, rather than CK's own HUD idiom
+                // Manager.ui.CalcGameplayUITargetScaleMultiplier(): that is a global scale, not a
+                // per-element one, and it collapses to (0,0,0) for several unrelated reasons at once
+                // (hidden UI, fades, load screens) — WorldState already covers the latter properly.
+                //
+                // hideInGameUI is in the list for a reason, though: it is not a niche setting but a
+                // regular keybind (PlayerInput.InputType.TOGGLE_UI). Without this term the readout
+                // stays on an otherwise empty screen — and BelowMinimap additionally jumps to the
+                // top-right corner, because CK deactivates the minimap along with everything else.
+                bool show =
+                    WorldState.IsInPlayableWorld
+                    && !Manager.prefs.hideInGameUI
+                    && !Manager.ui.isAnyInventoryShowing
+                    && !Manager.menu.IsAnyMenuActive()
+                    && ModConfig.Instance.enabled;
                 if (hudRoot.activeSelf != show)
                     hudRoot.SetActive(show);
 

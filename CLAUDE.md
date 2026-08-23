@@ -114,11 +114,17 @@ Four runtime classes in the `PlayerCoordinatesHud` namespace:
   (`coordinateText` white foreground, `coordinateTextOutline` black
   drop-shadow, offset 1px down-right) and the `hudRoot` child it toggles.
   `LateUpdate` decides visibility from explicit signals
-  (`WorldState.IsInPlayableWorld && !Manager.ui.isAnyInventoryShowing &&
-  !Manager.menu.IsAnyMenuActive() && ModConfig.Instance.enabled`) —
-  deliberately not CK's own HUD idiom
-  `Manager.ui.CalcGameplayUITargetScaleMultiplier()`, which returns `(0,0,0)`
-  for a mod HUD. `Render(float3 playerWorldPos)` is called every frame from
+  (`WorldState.IsInPlayableWorld && !Manager.prefs.hideInGameUI &&
+  !Manager.ui.isAnyInventoryShowing && !Manager.menu.IsAnyMenuActive() &&
+  ModConfig.Instance.enabled`) — deliberately not CK's own HUD idiom
+  `Manager.ui.CalcGameplayUITargetScaleMultiplier()`, which is a **global**
+  scale rather than a per-element one and collapses to `(0,0,0)` for several
+  unrelated reasons at once (hidden UI, fades, load screens); `WorldState`
+  already covers the latter. **`hideInGameUI` is load-bearing**, not a niche
+  setting: it is a regular keybind (`PlayerInput.InputType.TOGGLE_UI`), and
+  without that term the readout is the one thing left on an empty screen —
+  with `BelowMinimap` additionally jumping to the top-right corner, because CK
+  deactivates the minimap along with the rest. `Render(float3 playerWorldPos)` is called every frame from
   `PlayerCoordinatesHudMod.Update` but only actually repaints the `PugText`s
   when the formatted string changed (a `_lastRendered` cache) — this HUD runs
   permanently, unlike CK's own `CoordinatesUI`, which only renders while the
