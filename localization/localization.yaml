@@ -23,6 +23,10 @@ PlayerCoordinatesHud-Config:
     hint: "Choice label - where on the HUD the readout is drawn."
     en: "Position"
     de: "Position"
+  showIcon:
+    hint: "Toggle label - draws the position marker left of the coordinates."
+    en: "Show icon"
+    de: "Symbol anzeigen"
 
 # Choice option labels for `position`. Each leaf is the enum token
 # (ModConfig.Position.<name>.ToString()), which is also what gets persisted -- renaming an enum

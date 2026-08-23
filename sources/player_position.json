@@ -1,0 +1,4 @@
+{
+  "exclude": ["Ping", "Player blue", "Player red", "Player green"],
+  "sheetWidth": 16
+}

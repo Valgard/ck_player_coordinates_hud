@@ -29,6 +29,7 @@ namespace PlayerCoordinatesHud
         public GameObject hudRoot; // the toggled container (NOT this component's own GameObject)
         public PugText coordinateText; // white foreground text
         public PugText coordinateTextOutline; // black drop-shadow text, 1px down-right, drawn behind
+        public SpriteRenderer icon; // the position marker, drawn left of the text
 
         public static CoordinatesHud Instance { get; private set; }
 
@@ -76,6 +77,23 @@ namespace PlayerCoordinatesHud
         // wired; the live value is read from the transform so it cannot drift from the prefab.
         private const float FallbackRowDrop = 0.0625f;
 
+        // Space between the icon's right edge and where the text starts — two pixels. Narrower than
+        // ItemChecklist's 6.6 px, which reads as generous next to a lone counter but would pull a
+        // three-part readout apart. Its own width is measured off the sprite, not stated here.
+        private const float IconGap = 0.125f;
+
+        // Stands in for the sprite's width while none is assigned. 6 px at the sheet's 16 pixels per
+        // unit, i.e. the marker this mod ships.
+        private const float FallbackIconWidth = 0.375f;
+
+        // Nudge that keeps the sprite OFF the 1/16 grid. Both placements land exactly on it otherwise
+        // — half of a 6 px icon is 3/16, and a glyph-measured text edge is a whole number of pixels —
+        // and a small point-filtered sprite sitting precisely on a texel boundary renders distorted,
+        // because the rasteriser's rounding is ambiguous there and kicks one pixel row into the next
+        // cell. At 0.08 px the shift is invisible; the distortion it avoids is not. Documented in
+        // docs/ck/prefabs-and-rendering.md, found on ItemChecklist's 5x5 clear button.
+        private const float IconOffGrid = 0.005f;
+
         // CK exposes no manager field for the button hints, so the component is looked up once and
         // cached. The flag is only set on a HIT: FindFirstObjectByType excludes inactive objects, so
         // latching a miss would disable the bottom-right dodge for the rest of the session.
@@ -101,17 +119,31 @@ namespace PlayerCoordinatesHud
         // setting may well be a right-hand corner.
         private bool? _appliedRightAligned;
 
+        // The prefab's own x for both text rows, captured before anything shifts them. Every shift is
+        // written as base + offset rather than added to the current value, so the per-frame pass
+        // cannot accumulate; and the outline keeps its 1 px lead over the text without that offset
+        // being restated here.
+        private float _textBaseX;
+        private float _outlineBaseX;
+
         // One-shot diagnostics. These conditions are structural — a serialized field that is null once
         // is null for the session — so a plain bool is enough and the frame path stays log-free after
         // the first occurrence.
         private bool _loggedMissingMapUI;
         private bool _loggedMissingHints;
         private bool _loggedUnknownPosition;
+        private bool _loggedMissingIconSprite;
 
         protected void Awake()
         {
             Instance = this;
             _anchorZ = transform.localPosition.z;
+
+            // Read before the first ApplyPosition, which is what moves these.
+            if (coordinateText != null)
+                _textBaseX = coordinateText.transform.localPosition.x;
+            if (coordinateTextOutline != null)
+                _outlineBaseX = coordinateTextOutline.transform.localPosition.x;
 
             // One-shot: this only ever fires once for the lifetime of the mod's HUD instance (the
             // caller in PlayerCoordinatesHudMod never re-instantiates the prefab). Without it, a
@@ -124,6 +156,8 @@ namespace PlayerCoordinatesHud
                 missing += (missing.Length > 0 ? ", " : "") + "coordinateText";
             if (coordinateTextOutline == null)
                 missing += (missing.Length > 0 ? ", " : "") + "coordinateTextOutline";
+            if (icon == null)
+                missing += (missing.Length > 0 ? ", " : "") + "icon";
             if (missing.Length > 0)
                 Debug.LogError(
                     $"[PlayerCoordinatesHud] CoordinatesHud is missing serialized field(s): {missing}. Wire them on the PlayerCoordinatesHUD prefab in the Unity Editor."
@@ -167,8 +201,9 @@ namespace PlayerCoordinatesHud
         }
 
         /// <summary>
-        /// Moves the root to the configured anchor and matches the text alignment to it. Runs every
-        /// frame while visible, but only writes when the resulting placement actually changed.
+        /// Moves the root to the configured anchor, matches the text alignment to it, and lays out the
+        /// icon and text within the row. Runs every frame while visible, but only writes when the
+        /// resulting placement actually changed.
         /// </summary>
         private void ApplyPosition()
         {
@@ -195,6 +230,106 @@ namespace PlayerCoordinatesHud
                 _appliedRightAligned = rightAligned;
                 RepaintForNewAlignment();
             }
+
+            // After the repaint above, never before it: the icon is placed against the text's measured
+            // left edge, and an alignment change moves that edge from one side of the row to the other.
+            ApplyIcon(rightAligned);
+        }
+
+        /// <summary>
+        /// Places the marker left of the coordinates and shifts the text clear of it.
+        ///
+        /// <para><strong>Always left, on both sides of the screen</strong> — the icon leads the value
+        /// the way ItemChecklist's does, rather than mirroring with the corner. What differs between
+        /// the corners is which of the two moves: a left-hand corner anchors the icon and pushes the
+        /// text right by its width, a right-hand one leaves the text ending at the anchor and hangs
+        /// the icon off its left edge. Either way the pair is flush with the anchor, and turning the
+        /// icon off gives the width straight back.</para>
+        ///
+        /// <para><strong>That left edge is measured, not computed.</strong> <c>PugText.dimensions</c>
+        /// is a Rect the engine fills when it draws, and it lays out <c>xMin</c> per alignment — 0 for
+        /// left-aligned text, minus the drawn width for right-aligned. So one expression covers both
+        /// corners, and neither needs this mod to know how wide a glyph is. CK positions its own UI
+        /// off the same field (<c>Pug.Other:343386</c>).</para>
+        ///
+        /// <para>The consequence to expect in a right-hand corner: that edge moves as the coordinates
+        /// grow a digit, and the icon moves with it. The alternative — pinning the icon to the outside
+        /// — would hold still but put it behind the value it labels.</para>
+        /// </summary>
+        private void ApplyIcon(bool rightAligned)
+        {
+            if (icon == null)
+                return;
+
+            bool wanted = ModConfig.Instance.showIcon;
+            if (icon.enabled != wanted)
+                icon.enabled = wanted;
+
+            SetTextShift(rightAligned || !wanted ? 0f : IconWidth() + IconGap);
+            if (!wanted)
+                return;
+
+            // Reads the edge the line above just moved, which is why both corners resolve through one
+            // expression. On the very first frame a freshly shown HUD has nothing drawn yet, so the
+            // Rect is empty and this lands as though the text were zero-wide; Render runs in Update,
+            // ahead of this LateUpdate, so it is right from the following frame on.
+            float centre = TextLeftEdge() - IconGap - IconWidth() * 0.5f + IconOffGrid;
+
+            // x only. Where the marker sits within the row is prefab geometry, calibrated by eye
+            // against the text like the row's own offsets, and nothing here knows better than that.
+            var current = icon.transform.localPosition;
+            var target = new Vector3(centre, current.y, current.z);
+            if (current != target)
+                icon.transform.localPosition = target;
+        }
+
+        /// <summary>
+        /// Moves both text rows sideways by <paramref name="shift"/>, measured from the position the
+        /// prefab gave them. Writing base + shift rather than adding keeps the outline's 1 px lead
+        /// intact without restating it, and makes the per-frame call idempotent.
+        /// </summary>
+        private void SetTextShift(float shift)
+        {
+            SetLocalX(coordinateText, _textBaseX + shift);
+            SetLocalX(coordinateTextOutline, _outlineBaseX + shift);
+        }
+
+        private static void SetLocalX(PugText text, float x)
+        {
+            if (text == null)
+                return;
+            var current = text.transform.localPosition;
+            var target = new Vector3(x, current.y, current.z);
+            if (current != target)
+                text.transform.localPosition = target;
+        }
+
+        /// <summary>
+        /// The left edge of the drawn text, in the row's own space. Zero while nothing is wired, which
+        /// puts the icon at the anchor — the same place the prefab already has it.
+        /// </summary>
+        private float TextLeftEdge() => coordinateText != null ? coordinateText.transform.localPosition.x + coordinateText.dimensions.xMin : 0f;
+
+        /// <summary>
+        /// The marker's width in world units, off the sprite itself, so re-cutting the sheet at another
+        /// size needs no change here.
+        /// </summary>
+        private float IconWidth()
+        {
+            var sprite = icon != null ? icon.sprite : null;
+            if (sprite != null)
+                return sprite.bounds.size.x;
+
+            // Structural, so once is enough: a SpriteRenderer with no sprite draws nothing, and the
+            // gap it leaves in the row would otherwise be the only hint that the wiring is incomplete.
+            if (!_loggedMissingIconSprite)
+            {
+                _loggedMissingIconSprite = true;
+                Debug.LogWarning(
+                    "[PlayerCoordinatesHud] The icon SpriteRenderer has no sprite assigned — nothing will be drawn and the text is spaced for a default-width marker. Assign Art/UI/player_position's 'Player' sprite in the Unity Editor."
+                );
+            }
+            return FallbackIconWidth;
         }
 
         /// <summary>

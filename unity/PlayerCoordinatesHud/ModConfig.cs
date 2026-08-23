@@ -3,10 +3,9 @@ using ModSettingsMenu.Settings;
 namespace PlayerCoordinatesHud
 {
     /// <summary>
-    /// Settings adapter. Two player-facing knobs — the <c>enabled</c> master toggle and the
-    /// <c>position</c> choice — are live in-game settings from the Mod Settings Menu framework,
-    /// bound once in <see cref="PlayerCoordinatesHudMod.Init"/>. The singleton shape mirrors the
-    /// sibling mods so consumers read <c>ModConfig.Instance.enabled</c>.
+    /// Settings adapter. Every player-facing knob is a live in-game setting from the Mod Settings
+    /// Menu framework, bound once in <see cref="PlayerCoordinatesHudMod.Init"/>. The singleton shape
+    /// mirrors the sibling mods so consumers read <c>ModConfig.Instance.enabled</c>.
     /// </summary>
     internal sealed class ModConfig
     {
@@ -45,6 +44,7 @@ namespace PlayerCoordinatesHud
         // Null only in the brief pre-Bind window at mod load, where the defaults below apply.
         private SettingHandle<bool> _enabledHandle;
         private SettingHandle<Position> _positionHandle;
+        private SettingHandle<bool> _showIconHandle;
 
         /// <summary>
         /// Attaches the live setting handles. Called exactly once, from <c>Init</c>. Both guards below
@@ -52,17 +52,18 @@ namespace PlayerCoordinatesHud
         /// to its default, and a second Bind silently swaps which handles the mod reads — in both cases
         /// the settings screen keeps working while the mod ignores it.
         /// </summary>
-        public void Bind(SettingHandle<bool> enabled, SettingHandle<Position> position)
+        public void Bind(SettingHandle<bool> enabled, SettingHandle<Position> position, SettingHandle<bool> showIcon)
         {
-            if (enabled == null || position == null)
+            if (enabled == null || position == null || showIcon == null)
                 UnityEngine.Debug.LogError(
                     "[PlayerCoordinatesHud] Bind called with a null handle — that setting will stay at its default and ignore the menu."
                 );
-            if (_enabledHandle != null || _positionHandle != null)
+            if (_enabledHandle != null || _positionHandle != null || _showIconHandle != null)
                 UnityEngine.Debug.LogWarning("[PlayerCoordinatesHud] Bind called more than once — the later handles win.");
 
             _enabledHandle = enabled;
             _positionHandle = position;
+            _showIconHandle = showIcon;
         }
 
         // Master switch (default true). When false the readout is hidden.
@@ -70,6 +71,10 @@ namespace PlayerCoordinatesHud
 
         // Where the readout is drawn (default BottomLeft, the 1.0.0 behaviour).
         public Position position => _positionHandle != null ? _positionHandle.Value : Position.BottomLeft;
+
+        // Whether the marker sits left of the coordinates (default true). With it off the text takes
+        // the icon's width back, so the readout is flush with its anchor either way.
+        public bool showIcon => _showIconHandle != null ? _showIconHandle.Value : true;
 
         private static readonly ModConfig _instance = new ModConfig();
         public static ModConfig Instance => _instance;

@@ -43,9 +43,12 @@ namespace PlayerCoordinatesHud
                 .Hint("Show your position and distance from the Core on the HUD.")
                 .Toggle(out var en, "enabled", true)
                 .Choice(out var position, "position", (ModConfig.Position[])System.Enum.GetValues(typeof(ModConfig.Position)), ModConfig.Position.BottomLeft)
+                .Toggle(out var showIcon, "showIcon", true)
                 .Build();
-            ModConfig.Instance.Bind(en, position);
-            Debug.Log($"[PlayerCoordinatesHud] Settings bound. enabled={ModConfig.Instance.enabled}, position={ModConfig.Instance.position}");
+            ModConfig.Instance.Bind(en, position, showIcon);
+            Debug.Log(
+                $"[PlayerCoordinatesHud] Settings bound. enabled={ModConfig.Instance.enabled}, position={ModConfig.Instance.position}, showIcon={ModConfig.Instance.showIcon}"
+            );
         }
 
         public void ModObjectLoaded(Object obj)
