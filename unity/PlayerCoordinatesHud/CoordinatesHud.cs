@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -38,12 +39,26 @@ namespace PlayerCoordinatesHud
         // confirmed correct in game; the other three mirror it and still need calibration.
         private static readonly Vector2 AnchorBottomLeft = new Vector2(-13.5f, -7.5f);
         private static readonly Vector2 AnchorBottomRight = new Vector2(13.5f, -7.5f);
-        private static readonly Vector2 AnchorTopLeft = new Vector2(-13.5f, 7.5f);
-        private static readonly Vector2 AnchorTopRight = new Vector2(13.5f, 7.5f);
+
+        // The top row sits at 7.8, not the mirrored 7.5: that is the height ItemChecklist's own HUD
+        // container uses, so a readout in a top corner lines up with the established mod-HUD row.
+        private static readonly Vector2 AnchorTopLeft = new Vector2(-13.5f, 7.8f);
+        private static readonly Vector2 AnchorTopRight = new Vector2(13.5f, 7.8f);
 
         // Clearance between the minimap's bottom edge and the readout's centre line. The PugTexts are
         // verticalAlignment: center, so this absorbs half the text height as well as the visual gap.
         private const float MinimapGap = 0.5f;
+
+        // The same clearance above CK's on-screen button hints, for the bottom-right anchor.
+        private const float HintsGap = 0.5f;
+
+        // CK exposes no manager field for the button hints, so the component is looked up once and
+        // cached. The flag separates "not looked up yet" from "looked up, genuinely not there".
+        private InGameButtonHintsUI _buttonHints;
+        private bool _buttonHintsSearched;
+
+        // Reused across frames so measuring the hints allocates nothing after the first pass.
+        private readonly List<Renderer> _boundsScratch = new List<Renderer>();
 
         // The prefab's own Z, captured before anything moves the root. Every anchor keeps it: the
         // minimap anchor comes from world-space bounds, whose Z belongs to the map, not to this HUD.
@@ -115,6 +130,10 @@ namespace PlayerCoordinatesHud
             {
                 // Right-aligned so the readout's right edge lines up with the minimap's — and so the
                 // fallback below is a purely vertical move rather than a re-flow of the text.
+                rightAligned = true;
+            }
+            else if (configured == ModConfig.Position.BottomRight && TryGetButtonHintsAnchor(out anchor))
+            {
                 rightAligned = true;
             }
             else
@@ -190,6 +209,63 @@ namespace PlayerCoordinatesHud
 
             anchor = ToLocal(new Vector2(bounds.max.x, bounds.min.y - MinimapGap));
             return true;
+        }
+
+        /// <summary>
+        /// The anchor just above CK's on-screen button hints, keeping the bottom-right corner's x;
+        /// false when the hints are not drawn, in which case the plain corner anchor applies.
+        ///
+        /// <para>They cannot be treated as a fixed block: <c>InGameButtonHintsUI</c> lays out only the
+        /// buttons that apply right now, right-to-left across several rows, and the whole container
+        /// follows the player's own "show key hints" option. So the readout measures what is actually
+        /// on screen and sits above that, dropping into the true corner when nothing is shown.</para>
+        /// </summary>
+        private bool TryGetButtonHintsAnchor(out Vector2 anchor)
+        {
+            anchor = default;
+
+            if (!_buttonHintsSearched)
+            {
+                _buttonHints = FindFirstObjectByType<InGameButtonHintsUI>();
+                _buttonHintsSearched = true;
+            }
+
+            var container = _buttonHints != null ? _buttonHints.container : null;
+            if (container == null || !container.activeInHierarchy || !TryGetDrawnBounds(container, out var bounds))
+                return false;
+
+            // Only the height comes from the hints; x stays the corner's, so the readout does not
+            // drift sideways as buttons appear and disappear.
+            anchor = new Vector2(AnchorBottomRight.x, ToLocal(new Vector2(0f, bounds.max.y + HintsGap)).y);
+            return true;
+        }
+
+        /// <summary>
+        /// Combined world bounds of everything currently drawn under <paramref name="root"/>, or false
+        /// if nothing is. <c>Renderer.bounds</c> already accounts for scaling, and disabled renderers
+        /// are skipped, so this measures what the player sees rather than the container's nominal size.
+        /// </summary>
+        private bool TryGetDrawnBounds(GameObject root, out Bounds bounds)
+        {
+            bounds = default;
+            root.GetComponentsInChildren(false, _boundsScratch);
+
+            bool any = false;
+            foreach (var renderer in _boundsScratch)
+            {
+                if (!renderer.enabled)
+                    continue;
+                if (any)
+                {
+                    bounds.Encapsulate(renderer.bounds);
+                }
+                else
+                {
+                    bounds = renderer.bounds;
+                    any = true;
+                }
+            }
+            return any;
         }
 
         private static Vector2 CornerAnchor(ModConfig.Position position)
