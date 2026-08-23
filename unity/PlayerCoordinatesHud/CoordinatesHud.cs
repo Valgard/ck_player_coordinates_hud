@@ -33,11 +33,9 @@ namespace PlayerCoordinatesHud
         // per-frame unconditional Render would churn constantly. null = nothing painted yet.
         private string _lastRendered;
 
-        // Corner anchors, in the same local space the prefab's own (-13.5, -7.5) sits in. These are
-        // fixed values, not computed ones: the uiCamera shows a constant world area (16.875 units
-        // tall, 30 wide at 16:9), and CK has no aspect-dependent UI placement anywhere in its own
-        // code, so the readout follows the game rather than second-guessing it.
-        // BottomLeft is the shipped 1.0.0 value; the other three mirror it and are calibrated in game.
+        // Corner anchors, in the same local space the prefab's own (-13.5, -7.5) sits in — fixed
+        // values, exactly as CK positions its own HUD. BottomLeft is the shipped 1.0.0 value and is
+        // confirmed correct in game; the other three mirror it and still need calibration.
         private static readonly Vector2 AnchorBottomLeft = new Vector2(-13.5f, -7.5f);
         private static readonly Vector2 AnchorBottomRight = new Vector2(13.5f, -7.5f);
         private static readonly Vector2 AnchorTopLeft = new Vector2(-13.5f, 7.5f);
@@ -136,11 +134,31 @@ namespace PlayerCoordinatesHud
                 SetAlignment(rightAligned);
                 _appliedRightAligned = rightAligned;
                 _alignmentApplied = true;
-
-                // Force the change-gated Render to repaint. The string itself is unchanged, so without
-                // this the new alignment would not show until the player next crossed a tile boundary.
-                _lastRendered = null;
+                RepaintForNewAlignment();
             }
+        }
+
+        /// <summary>
+        /// Redraws the current string after an alignment change.
+        ///
+        /// <para><strong>Why this needs <c>force</c>.</strong> PugText keeps its own glyph cache, and
+        /// <c>HasCorrectGlyphs</c> decides it is still valid by comparing language, the string, the
+        /// format fields, <c>orderInLayer</c> and <c>maxWidth</c> — the alignment is <em>not</em> in
+        /// that list. Alignment is baked into each glyph's local offset when the text is drawn, so
+        /// with the string unchanged PugText keeps the old offsets and the readout stays laid out for
+        /// the previous corner until the coordinates happen to change. <c>force: true</c> is CK's own
+        /// escape hatch for exactly that, and it is why clearing this mod's <c>_lastRendered</c> gate
+        /// alone is not enough: that only opens our cache, PugText's still blocks behind it.</para>
+        /// </summary>
+        private void RepaintForNewAlignment()
+        {
+            // Nothing painted yet: the first Render will already use the current alignment.
+            if (_lastRendered == null)
+                return;
+            if (coordinateText != null)
+                coordinateText.Render(_lastRendered, false, true);
+            if (coordinateTextOutline != null)
+                coordinateTextOutline.Render(_lastRendered, false, true);
         }
 
         /// <summary>
@@ -163,9 +181,14 @@ namespace PlayerCoordinatesHud
             // World-space bounds, so the minimap's own runtime scaling (MapUI.UpdateUIScaling rescales
             // it every frame from CalcGameplayUITargetScaleMultiplier) is already accounted for.
             var bounds = border.bounds;
-            var world = new Vector3(bounds.max.x, bounds.min.y - MinimapGap, 0f);
-            var local = transform.parent != null ? transform.parent.InverseTransformPoint(world) : world;
-            anchor = new Vector2(local.x, local.y);
+
+            // A renderer can be active and still have nothing to measure — no sprite assigned yet, or
+            // scaled to nothing by UpdateUIScaling. Its bounds then collapse to a point at the origin,
+            // and using that would drop the readout into the middle of the screen instead of a corner.
+            if (bounds.size.x < 0.01f || bounds.size.y < 0.01f)
+                return false;
+
+            anchor = ToLocal(new Vector2(bounds.max.x, bounds.min.y - MinimapGap));
             return true;
         }
 
@@ -182,6 +205,18 @@ namespace PlayerCoordinatesHud
                 default:
                     return AnchorBottomLeft;
             }
+        }
+
+        /// <summary>
+        /// World XY into this HUD's own local space, so an anchor stays correct even if the parent CK
+        /// hands the HUD is moved or scaled.
+        /// </summary>
+        private Vector2 ToLocal(Vector2 world)
+        {
+            if (transform.parent == null)
+                return world;
+            var local = transform.parent.InverseTransformPoint(new Vector3(world.x, world.y, 0f));
+            return new Vector2(local.x, local.y);
         }
 
         /// <summary>

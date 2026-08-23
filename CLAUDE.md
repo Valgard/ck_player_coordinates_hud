@@ -170,13 +170,20 @@ carriers.
   this mod is the prefab **root**'s GameObject name
   (`"PlayerCoordinatesHUD"`), matched in `PlayerCoordinatesHudMod.ModObjectLoaded`.
   Renaming the root would silently stop the HUD from ever being instantiated.
-- **Changing the text alignment must reset `_lastRendered`.** The `Render`
-  change-gate compares the formatted *string*, which alignment does not
-  change — so switching between a left and a right corner would leave the old
-  alignment on screen until the player happened to cross a tile boundary.
-  `ApplyPosition` sets `_lastRendered = null` whenever it flips the alignment,
-  which is the only reason the switch looks instant. Any future property that
-  affects how the text is drawn rather than what it says needs the same reset.
+- **Changing the text alignment needs `PugText.Render(text, false, true)` —
+  clearing this mod's own `_lastRendered` is not enough.** There are *two*
+  caches in the path and both compare the string. Ours is `_lastRendered`;
+  PugText's is `HasCorrectGlyphs`, which validates its existing glyphs against
+  language, the string, the format fields, `orderInLayer` and `maxWidth` —
+  **`style.horizontalAlignment` is not in that list**. Alignment is baked into
+  each glyph's local offset at draw time, so with the string unchanged PugText
+  keeps the old offsets and the readout stays laid out for the previous corner.
+  Clearing only `_lastRendered` opens our gate and PugText's still blocks
+  behind it; the symptom is a readout that keeps the wrong alignment until the
+  player crosses a tile boundary, i.e. it looks *almost* right and fixes itself
+  while you walk. `force: true` is CK's own escape hatch. This only bites on a
+  left↔right change — two anchors on the same side share an alignment, and the
+  glyphs are children of the root, so they follow a pure move for free.
 - **`miniMapBorder.gameObject.activeInHierarchy` is one signal for three
   cases.** CK clears it when the player switched the minimap off in the
   options, when the big map replaced it, and when an inventory is open — so
