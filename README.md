@@ -27,8 +27,11 @@ playing.
   map's own coordinate readout follows your mouse cursor, so having this
   one keep following your player at the same time gives you both at a
   glance.
+- **A position marker beside the numbers**, drawn after the one the game puts
+  on your position on the map. Switch it off if you prefer the numbers alone.
 - **Configurable in-game.** Open **Options → Mod settings** to change the
-  position or switch the readout off entirely. No config files.
+  position, hide the marker, or switch the readout off entirely. No config
+  files.
 - **English and German.** The settings labels and hint follow the in-game
   language.
 
@@ -48,9 +51,9 @@ alongside this mod.
 ## How to use
 
 Nothing to do — the readout appears as soon as you're in a world, and follows
-you as you move. To move it or turn it off, open **Options → Mod settings →
-Player Coordinates HUD**; changes take effect as soon as you close the menu,
-with no restart.
+you as you move. To move it, hide its marker or turn it off, open **Options →
+Mod settings → Player Coordinates HUD**; changes take effect as soon as you
+close the menu, with no restart.
 
 ## Known Limitations
 

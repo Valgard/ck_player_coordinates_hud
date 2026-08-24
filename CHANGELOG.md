@@ -18,6 +18,10 @@ All notable changes to this mod are documented here.
 - **"Below minimap" also gives way to the PvP notice.** In a world with PvP
   enabled the game shows its own label in that exact spot; the readout now sits
   below it instead of on top of it, and moves back up when PvP is switched off.
+- **A position marker sits beside the coordinates.** A small icon to the left of
+  the readout, drawn after the marker the game puts on your position on the map.
+  Switch it off with **Show icon** if you prefer the numbers on their own — the
+  line then sits flush against the screen edge as before.
 
 ### Changed
 

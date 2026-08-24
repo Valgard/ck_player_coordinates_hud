@@ -8,9 +8,10 @@ code in this repository.
 A Core Keeper mod that permanently shows the player's **world coordinates and
 distance from the Core** on the HUD, in Core Keeper's own map format
 (`x, z (distance)`, e.g. `57, -24 (62)`). Vanilla only shows coordinates inside
-the map view, and only for the mouse cursor, never for the player. Two
-player-facing settings — an `Enabled` toggle and a `Position` choice (four
-corners plus below-the-minimap) — via the Mod Settings Menu framework.
+the map view, and only for the mouse cursor, never for the player. Player-facing
+settings — an `Enabled` toggle, a `Position` choice (four corners plus
+below-the-minimap) and a `Show icon` toggle for the marker beside the numbers —
+via the Mod Settings Menu framework.
 Hard-depends on CoreLib + Mod Settings Menu. Personal-use, non-commercial
 (Pugstorm EULA).
 
@@ -98,12 +99,13 @@ Four runtime classes in the `PlayerCoordinatesHud` namespace:
   gated on the instantiated GameObject, **not** on `CoordinatesHud.Instance` —
   `Instance` is only assigned by that component's own `Awake`, which never
   fires if the Editor wiring (the `hudRoot`/`coordinateText`/
-  `coordinateTextOutline` serialized fields) is missing, and an
+  `coordinateTextOutline`/`icon` serialized fields) is missing, and an
   `Instance`-based gate would then re-instantiate the prefab every frame.
-- **`ModConfig`** — the settings adapter. Two player-facing knobs: `enabled`
-  (Toggle, default `true`) and `position` (Choice over the `Position` enum,
-  default `BottomLeft`), read from bound `SettingHandle`s (`ModConfig.Bind`,
-  called once from `Init`). Singleton shape mirrors the sibling mods
+- **`ModConfig`** — the settings adapter. The player-facing knobs: `enabled`
+  (Toggle, default `true`), `position` (Choice over the `Position` enum,
+  default `BottomLeft`) and `showIcon` (Toggle, default `true`), read from bound
+  `SettingHandle`s (`ModConfig.Bind`, called once from `Init`). Singleton shape
+  mirrors the sibling mods
   (`ModConfig.Instance.enabled`). Before `Bind` is called (the brief pre-load
   window), the getters fall back to those defaults. **The `Position` member
   names are persisted data, not just identifiers** — `Choice` stores a setting
@@ -130,14 +132,24 @@ Four runtime classes in the `PlayerCoordinatesHud` namespace:
   permanently, unlike CK's own `CoordinatesUI`, which only renders while the
   map is open, so an unconditional `Render` would churn every frame.
   `ApplyPosition` (also from `LateUpdate`, only while visible) moves the root
-  to the configured anchor and matches the text alignment to it. **All anchors
+  to the configured anchor, matches the text alignment to it, and then calls
+  `ApplyIcon` to lay out the marker and text within the row. **All anchors
   are constants** read off the vanilla prefab — the uiCamera is not
   screen-driven (its `PugCamera` runs `OutputMode.Fixed` at 480×270 and PugRP
   forces the aspect from those numbers), so the visible area is always
-  ±15 × ±8.4375 and the edges never move. Two things are still measured at
-  runtime, and only these: the height of CK's button hints, which changes as
-  they come and go, and the text height via `PugText.dimensions`. The prefab's
-  own Z is kept, since anchors are 2-D.
+  ±15 × ±8.4375 and the edges never move. What *is* measured at runtime: the
+  height of CK's button hints, which changes as they come and go; the text
+  height and its drawn left edge via `PugText.dimensions`; and the marker's
+  width off its own sprite. The prefab's own Z is kept, since anchors are 2-D.
+- **`ApplyIcon`** — the marker leads the value on both sides of the screen (as
+  ItemChecklist's does) rather than mirroring with the corner. What mirrors is
+  which half moves: a left-hand corner pins the icon to the anchor and shifts
+  both text rows right by its width, a right-hand one leaves the text ending at
+  the anchor and hangs the icon off `dimensions.xMin`. Both stay flush with the
+  anchor, and `showIcon: false` returns the width to the text. The shift is
+  written as prefab-base + offset, never accumulated, so the per-frame pass is
+  idempotent and the outline keeps its 1 px lead for free. The icon's **y stays
+  prefab geometry** — see the gotcha below.
 - **`WorldState`** — the shared `IsInPlayableWorld` predicate, copied from
   ItemChecklist (its Iter-11.6/Iter-15 fixes): `isInGame &&
   isSceneHandlerReady && !cutsceneIsPlaying && Manager.main.player != null &&
@@ -148,10 +160,21 @@ Four runtime classes in the `PlayerCoordinatesHud` namespace:
 
 `unity/` is the canonical source — a 1:1 mirror of the SDK's `Assets/` tree
 holding every file the Editor generates for the mod: the `.cs` sources, both
-`.asmdef` files, the ModBuilderSettings `.asset`, the HUD prefab, the
-localization generator outputs (gitignored, produced from
-`localization/localization.yaml` at build time), and all `.meta` GUID
+`.asmdef` files, the ModBuilderSettings `.asset`, the HUD prefab, the sprite
+sheet under `Art/UI/`, the localization generator outputs (gitignored, produced
+from `localization/localization.yaml` at build time), and all `.meta` GUID
 carriers.
+
+`Art/UI/player_position.png` is **generated**, not hand-edited: the master is
+`sources/player_position.pixaki`, cut by `../utils/pixaki_to_sheet.py` against
+the sprite definition in `sources/player_position.json`. That definition pins
+the sheet **GUID** (it otherwise derives from the output path, so cutting the
+same master from a worktree would silently orphan the prefab's sprite
+reference) and excludes the layers that must never ship: CK's extracted
+originals, the 10×10 `Ping` alternative, and the master's working background.
+`../utils/pixaki_inspect.py` prints any layer as a character grid with its
+palette — which is how a single stray pixel and a forgotten background layer
+were caught here.
 
 ## Mod-specific gotchas
 
@@ -206,6 +229,20 @@ carriers.
   while you walk. `force: true` is CK's own escape hatch. This only bites on a
   left↔right change — two anchors on the same side share an alignment, and the
   glyphs are children of the root, so they follow a pure move for free.
+- **The icon's y was calibrated by eye, twice, and the arithmetic was wrong
+  both times.** First: a `PugText` transform is the vertical **centre** of its
+  line, not its top edge, so the marker matches the text's own y instead of
+  hanging below it. Then: that box centre is still a pixel below the *optical*
+  centre of digits, because the 10 px line box reserves room for descenders
+  numbers never use. Hence `y: 0` in the prefab — one pixel above the text
+  row's own `-0.0625` — and hence `ApplyIcon` writing **only x** and leaving the
+  height to the prefab. The general form is in
+  `../docs/ck/prefabs-and-rendering.md`.
+- **A small sprite must not land on the 1/16 grid.** Both of `ApplyIcon`'s
+  placements would: half a 6 px icon is `3/16`, and a glyph-measured text edge
+  is a whole number of pixels. Point-filtered sprites render distorted exactly
+  on a texel boundary, so `IconOffGrid` (0.005) shifts them off it — 0.08 px,
+  invisible, and the reason the ring renders round.
 - **`miniMapBorder.gameObject.activeInHierarchy` is one signal for three
   cases** — but they come from two different places, which is why grepping one
   method makes it look wrong. `MapUI.LateUpdate` deactivates the border's

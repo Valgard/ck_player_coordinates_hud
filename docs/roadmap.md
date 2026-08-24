@@ -40,22 +40,3 @@ localisation terms.
 **Settled.** The visibility decision lives in exactly one place,
 `CoordinatesHud.LateUpdate`, so the hotkey is one more term ANDed into that
 single `bool show` expression.
-
-## An icon beside the readout
-
-Original pixel art, with CK's own map marker as a **visual reference only**.
-
-**Cost is mostly setup, not drawing.** This mod ships no sprites at all today —
-there is no `Art/` tree — so it means standing up the whole sibling pipeline
-(`.pixaki` master → `utils/pixaki_to_sheet.py` → sheet + `.meta` → prefab
-reference). The prefab also needs a new child, which per the parent `CLAUDE.md`
-means a Unity Editor session rather than hand-written YAML. Which side the icon
-sits on falls out of the same `rightAligned` decision `ApplyPosition` already
-makes.
-
-**Why CK's marker is a reference and not a sprite to reuse.** It is **4 × 4 px**
-(`Assets/Sprite/player_marker.asset` in the AssetRipper dump, atlas
-`Texture2D/sactx-0-256x128-Uncompressed-ui-ed19f136.png`): a white ring around a
-2 × 2 colour core. Its corner pixels are **opaque map-background blue, not
-transparent** — Pugstorm fakes the rounded corner with the map's own backdrop.
-Fine on the map, visibly wrong over gameplay.
