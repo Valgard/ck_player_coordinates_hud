@@ -39,7 +39,9 @@ mod.io will prompt you to install both when you subscribe.
 ## Good to know
 
 - Verified on Core Keeper 1.2.1.5.
-- A show/hide hotkey is being considered for a future update.
+- There is no separate hotkey for the readout: switch it in the Mod settings,
+  or use Core Keeper's own hide-interface key, which hides it along with
+  everything else.
 
 ---
 

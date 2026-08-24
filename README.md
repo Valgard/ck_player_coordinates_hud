@@ -57,8 +57,9 @@ close the menu, with no restart.
 
 ## Known Limitations
 
-- **No hotkey.** There is currently no keybind to show/hide the readout on
-  demand — only the Mod settings toggle.
+- **No hotkey of its own.** The readout is switched in the Mod settings. Core
+  Keeper's own hide-interface key does hide it, but along with the rest of the
+  interface — there is no keybind for this one element alone.
 
 ## Localisation
 

@@ -29,14 +29,3 @@ is right-aligned in right-hand positions. Two stacked rows only look deliberate
 if they share an edge, so one side has to give: either this readout switches to
 left-aligned when it tucks under ICL, or both keep the right edge and their left
 ends stay ragged. Decide that before writing code.
-
-## A rebindable show/hide hotkey
-
-Would need CoreLib's `ControlMappingModule` with its own control-mapping
-category, per the `AddNewCategory` pattern ItemChecklist's Iter-34 established —
-the default `-1`/"Mods" bucket suppresses its own sub-header — plus two
-localisation terms.
-
-**Settled.** The visibility decision lives in exactly one place,
-`CoordinatesHud.LateUpdate`, so the hotkey is one more term ANDed into that
-single `bool show` expression.
