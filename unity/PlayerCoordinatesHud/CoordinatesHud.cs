@@ -10,8 +10,9 @@ namespace PlayerCoordinatesHud
     /// Its placement is a player setting: four corners plus a spot below the minimap. All anchors are
     /// constants; what varies at runtime is which of them applies — the below-minimap spot steps aside
     /// to the top-right corner while the minimap is not drawn, it steps below CK's PvP label when a
-    /// world has PvP enabled, and the bottom-right corner rides above CK's button hints, whose
-    /// occupied height depends on which of them apply. See <see cref="ApplyPosition"/>.
+    /// world has PvP enabled, the bottom-right corner rides above CK's button hints, whose occupied
+    /// height depends on which of them apply, and the top-right corner steps left of ItemChecklist's
+    /// counter when that mod is drawing one. See <see cref="ApplyPosition"/>.
     ///
     /// <para>This is NOT a modal CoreLib UI — it is instantiated directly by
     /// <see cref="PlayerCoordinatesHudMod"/> under the in-game HUD root and must never be passed to
@@ -50,8 +51,10 @@ namespace PlayerCoordinatesHud
         //           where CK puts its own text against that frame (PvPEnabledUI at 14.4375).
         //   bottom  the minimap's bottom edge is 4.9375 (centre 6.0625, height 2.25).
         //   rows    NOT vanilla values. TopY tracks ItemChecklist's HUD row (its hudRoot sits at
-        //           (10, 7.8)) so a top corner lines up with the mod-HUD row already there — nudged
-        //           to 7.8125 because 7.8 is 124.8 px, i.e. off CK's 1/16 pixel grid. The 0.2 px
+        //           (10, 7.8)) so a top corner lines up with the mod-HUD row already there — which is
+        //           what lets the two stand side by side rather than fight over it, see
+        //           TryGetItemChecklistLeftEdge. Nudged to 7.8125 because 7.8 is 124.8 px, i.e. off
+        //           CK's 1/16 pixel grid, so the two sit 0.2 px apart until that mod moves. The 0.2 px
         //           that buys is invisible; landing between pixels is not, for point-filtered text.
         //           BottomY does NOT mirror it: the text always hangs RowDrop below its anchor, so a
         //           mirrored anchor would leave the bottom margin 2 px tighter than the top. -7.6875
@@ -68,6 +71,23 @@ namespace PlayerCoordinatesHud
         // 4.9375. Half the text height is subtracted separately (see TextCentreDrop), so this stays
         // a pure gap rather than a value silently carrying the font size around with it.
         private const float UIGap = 0.0625f;
+
+        // CK's UI pixel. The fixed 480x270 output over +-15 x +-8.4375 world units is exactly 16 pixels
+        // per unit, which is what every 0.0625 above is a count of.
+        private const float PixelsPerUnit = 16f;
+
+        // Separation between this readout and ItemChecklist's counter where the two share the top-right
+        // row — eight pixels. Deliberately NOT UIGap: that is clearance from a piece of UI's frame, one
+        // pixel, the way CK spaces its own PvP label under the minimap. This is the gap BETWEEN two
+        // readouts standing side by side, and it has to beat the widest gap INSIDE either of them or the
+        // eye groups the wrong halves together — ItemChecklist leaves 6.6 px between its icon and its
+        // text, this mod 2 px (see IconGap). Calibrated by eye against the pair.
+        private const float NeighbourGap = 0.5f;
+
+        // ItemChecklist's HUD counter, matched on the prefab root's name. A PREFIX, because
+        // Object.Instantiate appends "(Clone)" and a mod may or may not rename the instance afterwards;
+        // still specific enough to tell that counter from its sibling ItemChecklistTracker HUD.
+        private const string ItemChecklistHudName = "ItemChecklistHUD";
 
         // Stands in for half the text height until the first Render has measured one. The prefab uses
         // fontFace thinTiny (Font5), whose charDims.y is 10 -> 10/16 = 0.625 tall, so half is 0.3125.
@@ -104,6 +124,12 @@ namespace PlayerCoordinatesHud
         // world has PvP enabled (a pause-menu switch, so it can appear mid-session).
         private PvPTextUI _pvpText;
         private bool _pvpTextSearched;
+
+        // ItemChecklist's counter, which claims the top-right row. Cached the same way and for the same
+        // reason as the two vanilla lookups above, plus one of its own: that mod is optional, so a miss
+        // here can also mean "not installed" and must stay cheap to repeat.
+        private Transform _itemChecklistHud;
+        private bool _itemChecklistSearched;
 
         // Reused across frames so measuring the hints allocates nothing after the first pass. Keep the
         // field typed as List<Renderer>: the foreach below then uses List's struct enumerator, while an
@@ -218,11 +244,22 @@ namespace PlayerCoordinatesHud
             // Two positions dodge UI that comes and goes; when it is not there, they simply ARE their
             // corner. The other three are their corner, always.
             if (!TryGetDodgingAnchor(configured, out var anchor))
+            {
                 anchor = CornerAnchor(corner);
 
-            // Alignment follows the corner the position belongs to — and deliberately not whether the
-            // dodge succeeded: both dodging positions are right-hand ones, so a dodge that fails is a
-            // purely vertical move rather than a re-flow of the text.
+                // ItemChecklist's own always-on counter claims this exact row, so the readout steps
+                // aside ALONG it and the two form one line. Deliberately inside this branch, not beside
+                // it: EffectiveCorner maps BelowMinimap to TopRight unconditionally, so testing the
+                // corner out there would also shove the below-minimap position sideways while it is
+                // successfully dodging the minimap — a spot ItemChecklist does not occupy.
+                if (corner == ModConfig.Position.TopRight && TryGetItemChecklistLeftEdge(out float neighbourLeft))
+                    anchor.x = neighbourLeft - NeighbourGap;
+            }
+
+            // Alignment follows the corner the position belongs to — and deliberately not whether any
+            // dodge succeeded. All three dodges preserve it: the two in TryGetDodgingAnchor are purely
+            // vertical moves on right-hand positions, and the ItemChecklist step above is a purely
+            // horizontal one that keeps the text growing away from what it made room for.
             bool rightAligned = IsRightAligned(corner);
 
             var target = new Vector3(anchor.x, anchor.y, _anchorZ);
@@ -556,6 +593,89 @@ namespace PlayerCoordinatesHud
             anchor = new Vector2(RightEdgeX, ToLocal(new Vector2(0f, bounds.max.y)).y + UIGap + TextCentreDrop() + RowDrop());
             return true;
         }
+
+        /// <summary>
+        /// The left edge of ItemChecklist's always-on counter in this HUD's local space, or false when
+        /// that mod is not installed, is switched off, or is not drawing right now.
+        ///
+        /// <para><strong>Why the two share a row instead of stacking.</strong> ItemChecklist puts its
+        /// counter at the same height this mod's top corners use — <see cref="TopY"/> was chosen to
+        /// match it — so with both installed the top-right position lands on top of it. Dropping below
+        /// is not available: CK's minimap starts at y 7.1875 and ItemChecklist's text ends at about
+        /// 7.425, leaving under four pixels where a text row needs ten. So the readout steps sideways
+        /// and the two become one line.</para>
+        ///
+        /// <para><strong>This edge holds still, unlike the button hints'.</strong> ItemChecklist's
+        /// counter is left-aligned with its icon at the front, so what moves as its numbers grow is the
+        /// RIGHT end; the left edge is the icon's, at a fixed offset inside its container. It is still
+        /// measured rather than stated, because the value belongs to another mod and is free to change
+        /// with its next release — the same reason the vanilla lookups above measure.</para>
+        ///
+        /// <para>Found as a SIBLING by name: both mods instantiate their HUD under
+        /// <c>Manager.ui.chestInventoryUI.transform.parent</c>, so this is a handful of string compares
+        /// rather than a scene scan — and it needs no assembly reference, which is what keeps the
+        /// dependency optional.</para>
+        ///
+        /// <para>The same one-frame lag as the button hints applies, for the same reason: that mod
+        /// toggles its own container from its own <c>LateUpdate</c>, and two <c>LateUpdate</c>s have no
+        /// defined order. On the frame its counter appears or goes away this may still measure the
+        /// previous state, which shows as the readout settling one frame late.</para>
+        /// </summary>
+        private bool TryGetItemChecklistLeftEdge(out float leftLocal)
+        {
+            leftLocal = 0f;
+
+            if (!_itemChecklistSearched)
+            {
+                _itemChecklistHud = FindSibling(ItemChecklistHudName);
+
+                // Only latch a HIT, as with the button hints: a miss can mean the other mod has not
+                // instantiated its HUD yet, and latching that would park this readout on top of it for
+                // the rest of the session. A permanent miss (that mod not installed) simply repeats a
+                // walk over a handful of siblings.
+                if (_itemChecklistHud != null)
+                    _itemChecklistSearched = true;
+            }
+
+            if (_itemChecklistHud == null)
+                return false;
+
+            // Quiet from here, unlike the vanilla lookups: nothing drawn is an ordinary state — that
+            // mod's own switch is off, or its HUD is hidden — and then the plain corner is right.
+            if (!TryGetDrawnBounds(_itemChecklistHud.gameObject, out var bounds))
+                return false;
+
+            leftLocal = SnapDownToPixel(ToLocal(new Vector2(bounds.min.x, 0f)).x);
+            return true;
+        }
+
+        /// <summary>
+        /// The first sibling of this HUD whose name starts with <paramref name="namePrefix"/>, or null.
+        /// Skips this HUD itself, so a prefix that also matched it could not shadow the real one.
+        /// </summary>
+        private Transform FindSibling(string namePrefix)
+        {
+            var parent = transform.parent;
+            if (parent == null)
+                return null;
+
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                var child = parent.GetChild(i);
+                if (child != transform && child.name.StartsWith(namePrefix, System.StringComparison.Ordinal))
+                    return child;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Rounds a coordinate down onto CK's 1/16 pixel grid. Every anchor in this file is a multiple
+        /// of it on purpose (see <see cref="TopY"/>): a point-filtered font landing between two pixels
+        /// is the one thing that visibly softens it. A position derived from another mod's UI is
+        /// exactly where that offset creeps in — ItemChecklist's own row sits at 124.8 px — and down
+        /// rather than to-nearest keeps the step on the side that widens the gap it just measured.
+        /// </summary>
+        private static float SnapDownToPixel(float value) => Mathf.Floor(value * PixelsPerUnit) / PixelsPerUnit;
 
         /// <summary>
         /// Combined world bounds of everything currently drawn under <paramref name="root"/>, or false
