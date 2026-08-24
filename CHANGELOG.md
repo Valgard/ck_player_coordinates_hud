@@ -22,7 +22,8 @@ All notable changes to this mod are documented here.
   too, its counter sits on exactly this row — the readout now steps aside along
   the row so the two stand side by side, instead of landing on top of it. It
   takes the whole corner back the moment that counter is switched off or
-  hidden, and no other position is affected.
+  hidden. "Below minimap" behaves the same way whenever it falls back to that
+  corner; the other three corners are untouched.
 - **A position marker sits beside the coordinates.** A small icon to the left of
   the readout, modelled on the marker the game puts on your position on the map.
   Switch it off with **Show icon** if you prefer the numbers on their own — the

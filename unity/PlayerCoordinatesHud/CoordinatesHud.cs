@@ -125,11 +125,15 @@ namespace PlayerCoordinatesHud
         private PvPTextUI _pvpText;
         private bool _pvpTextSearched;
 
-        // ItemChecklist's counter, which claims the top-right row. Cached the same way and for the same
-        // reason as the two vanilla lookups above, plus one of its own: that mod is optional, so a miss
-        // here can also mean "not installed" and must stay cheap to repeat.
+        // ItemChecklist's counter, which claims the top-right row. Cached — but WITHOUT the companion
+        // "already searched" flag the two lookups above carry, and that is deliberate rather than an
+        // omission. The reference itself answers both questions here: a null one means look again, and
+        // Unity's == overload makes a DESTROYED transform read as null too, so the cache re-finds a
+        // neighbour that was torn down and rebuilt instead of holding a dead reference for the session.
+        // A separate flag would suppress exactly that. It is affordable because the search is a walk
+        // over a handful of siblings, unlike the scene-wide FindFirstObjectByType the vanilla lookups
+        // pay for — which is the whole reason those two need a flag at all.
         private Transform _itemChecklistHud;
-        private bool _itemChecklistSearched;
 
         // Reused across frames so measuring the hints allocates nothing after the first pass. Keep the
         // field typed as List<Renderer>: the foreach below then uses List's struct enumerator, while an
@@ -625,17 +629,12 @@ namespace PlayerCoordinatesHud
         {
             leftLocal = 0f;
 
-            if (!_itemChecklistSearched)
-            {
+            // Searched whenever there is nothing cached — which covers three states with one test: not
+            // looked yet, that mod not installed, and a neighbour that was destroyed since (see the
+            // field). Repeating the walk while it is absent is the point, not a cost: latching a miss
+            // would park this readout on top of a HUD that appears one frame later.
+            if (_itemChecklistHud == null)
                 _itemChecklistHud = FindSibling(ItemChecklistHudName);
-
-                // Only latch a HIT, as with the button hints: a miss can mean the other mod has not
-                // instantiated its HUD yet, and latching that would park this readout on top of it for
-                // the rest of the session. A permanent miss (that mod not installed) simply repeats a
-                // walk over a handful of siblings.
-                if (_itemChecklistHud != null)
-                    _itemChecklistSearched = true;
-            }
 
             if (_itemChecklistHud == null)
                 return false;
