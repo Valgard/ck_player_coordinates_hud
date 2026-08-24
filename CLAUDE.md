@@ -83,9 +83,12 @@ Two failure modes worth naming, because both are silent:
 Four runtime classes in the `PlayerCoordinatesHud` namespace:
 
 - **`PlayerCoordinatesHudMod` (`IMod`)** — bootstrap. `Init` registers the Mod
-  Settings section (a `Toggle` for `enabled`, default on, and a `Choice` for
-  `position`, default `BottomLeft`) and binds both handles into `ModConfig`.
-  Neither setting is marked `RequiresRestart`: both are read live every frame,
+  Settings section (a `Toggle` for `enabled`, default on, a `Choice` for
+  `position`, default `BottomLeft`, and a `Toggle` for `showIcon`, default on)
+  and binds the handles into `ModConfig` — **by name**, because two of the three
+  are `SettingHandle<bool>` with the same default, so a swap would compile,
+  clear both guards and log a plausible line. None of them is marked
+  `RequiresRestart`: all are read live every frame,
   so a change takes effect the moment the menu closes — **not** while it is
   open, since the visibility gate hides the readout behind any menu.
   `ModObjectLoaded` captures the HUD prefab by
@@ -114,7 +117,8 @@ Four runtime classes in the `PlayerCoordinatesHud` namespace:
   resets every player who chose it and drops its localization.
 - **`CoordinatesHud : UIelement`** — owns the two `PugText`s
   (`coordinateText` white foreground, `coordinateTextOutline` black
-  drop-shadow, offset 1px down-right) and the `hudRoot` child it toggles.
+  drop-shadow, offset 1px down-right), the `icon` SpriteRenderer beside them,
+  and the `hudRoot` child it toggles.
   `LateUpdate` decides visibility from explicit signals
   (`WorldState.IsInPlayableWorld && !Manager.prefs.hideInGameUI &&
   !Manager.ui.isAnyInventoryShowing && !Manager.menu.IsAnyMenuActive() &&
@@ -137,18 +141,23 @@ Four runtime classes in the `PlayerCoordinatesHud` namespace:
   are constants** read off the vanilla prefab — the uiCamera is not
   screen-driven (its `PugCamera` runs `OutputMode.Fixed` at 480×270 and PugRP
   forces the aspect from those numbers), so the visible area is always
-  ±15 × ±8.4375 and the edges never move. What *is* measured at runtime: the
-  height of CK's button hints, which changes as they come and go; the text
-  height and its drawn left edge via `PugText.dimensions`; and the marker's
-  width off its own sprite. The prefab's own Z is kept, since anchors are 2-D.
-- **`ApplyIcon`** — the marker leads the value on both sides of the screen (as
-  ItemChecklist's does) rather than mirroring with the corner. What mirrors is
-  which half moves: a left-hand corner pins the icon to the anchor and shifts
-  both text rows right by its width, a right-hand one leaves the text ending at
-  the anchor and hangs the icon off `dimensions.xMin`. Both stay flush with the
-  anchor, and `showIcon: false` returns the width to the text. The shift is
-  written as prefab-base + offset, never accumulated, so the per-frame pass is
-  idempotent and the outline keeps its 1 px lead for free. The icon's **y stays
+  ±15 × ±8.4375 and the edges never move. Measured at runtime instead: the
+  drawn bounds of CK's button hints and of its PvP label, which move with what
+  they contain; the text height and its drawn left edge via
+  `PugText.dimensions`; the marker's width off its own sprite; and the text
+  row's own depth below the root, read back from the prefab transform
+  (`RowDrop`). The prefab's own Z is kept, since anchors are 2-D.
+  `ApplyIcon`, called from the end of `ApplyPosition`, then lays out marker and
+  text within that row: the marker leads the value on **both** sides of the
+  screen (as ItemChecklist's does) rather than mirroring with the corner. What
+  mirrors is which half moves — a left-hand corner pins the icon to the anchor
+  and shifts both text rows right by the icon's width plus the gap, a
+  right-hand one leaves the text ending at the anchor and hangs the icon off
+  `dimensions.xMin`. Both stay flush with the anchor. `showIcon: false` returns
+  that width to the text in a left-hand corner; in a right-hand one the text
+  never moved, so only the marker goes. The shift is written as prefab-base +
+  offset, never accumulated, so the per-frame pass is idempotent and the
+  outline keeps its 1 px down-right offset for free. The icon's **y stays
   prefab geometry** — see the gotcha below.
 - **`WorldState`** — the shared `IsInPlayableWorld` predicate, copied from
   ItemChecklist (its Iter-11.6/Iter-15 fixes): `isInGame &&
@@ -168,10 +177,14 @@ carriers.
 `Art/UI/player_position.png` is **generated**, not hand-edited: the master is
 `sources/player_position.pixaki`, cut by `../utils/pixaki_to_sheet.py` against
 the sprite definition in `sources/player_position.json`. That definition pins
-the sheet **GUID** (it otherwise derives from the output path, so cutting the
-same master from a worktree would silently orphan the prefab's sprite
-reference) and excludes the layers that must never ship: CK's extracted
-originals, the 10×10 `Ping` alternative, and the master's working background.
+**both halves of the prefab's sprite reference**, because each is derived from
+something that can change without anyone meaning to: the sheet **GUID** hashes
+the output path (so cutting the same master from a worktree would orphan the
+reference), and the sprite's **internalID** hashes the layer name (so renaming
+`Player` in the master would). A broken reference shows as an empty patch of
+HUD, not as an error. The definition also excludes the layers that must never
+ship: CK's extracted originals, the 10×10 `Ping` alternative, and the master's
+working background.
 `../utils/pixaki_inspect.py` prints any layer as a character grid with its
 palette — which is how a single stray pixel and a forgotten background layer
 were caught here.

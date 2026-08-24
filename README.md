@@ -27,7 +27,7 @@ playing.
   map's own coordinate readout follows your mouse cursor, so having this
   one keep following your player at the same time gives you both at a
   glance.
-- **A position marker beside the numbers**, drawn after the one the game puts
+- **A position marker beside the numbers**, modelled on the one the game puts
   on your position on the map. Switch it off if you prefer the numbers alone.
 - **Configurable in-game.** Open **Options → Mod settings** to change the
   position, hide the marker, or switch the readout off entirely. No config

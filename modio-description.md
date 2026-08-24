@@ -23,7 +23,7 @@ current position on screen, permanently.
   overlaps the vanilla UI. Keeps showing while the big map (Tab) is open,
   though — the map's own readout follows your mouse, so the two together give
   you both your position and the cursor's.
-- A position marker beside the numbers, drawn after the one the game puts on
+- A position marker beside the numbers, modelled on the one the game puts on
   your position on the map. Switch it off if you prefer the numbers alone.
 - Configurable in-game. Open **Options → Mod settings** to move the readout,
   hide the marker, or switch it off entirely. No config files.
