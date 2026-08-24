@@ -30,9 +30,10 @@ namespace PlayerCoordinatesHud
         public void Init()
         {
             // Section uses the default AsDeclared sort, so builder-call order IS render order.
-            // No RequiresRestart on either setting: both are read live every frame by CoordinatesHud
-            // (visibility in LateUpdate, placement in ApplyPosition), so a change takes effect the
-            // moment the menu closes — not while it is open, since the readout hides behind any menu.
+            // No RequiresRestart on any of them: every setting is read live every frame by
+            // CoordinatesHud (visibility in LateUpdate, placement in ApplyPosition, the marker in
+            // ApplyIcon), so a change takes effect the moment the menu closes — not while it is open,
+            // since the readout hides behind any menu.
             //
             // The options come from the enum itself rather than a hand-written array, so a new
             // Position member appears in the menu automatically. Declaration order is menu order, and
@@ -41,11 +42,14 @@ namespace PlayerCoordinatesHud
             ModSettings
                 .Section(this)
                 .Hint("Show your position and distance from the Core on the HUD.")
-                .Toggle(out var en, "enabled", true)
-                .Choice(out var position, "position", (ModConfig.Position[])System.Enum.GetValues(typeof(ModConfig.Position)), ModConfig.Position.BottomLeft)
-                .Toggle(out var showIcon, "showIcon", true)
+                .Toggle(out var en, "enabled", ModConfig.DefaultEnabled)
+                .Choice(out var position, "position", (ModConfig.Position[])System.Enum.GetValues(typeof(ModConfig.Position)), ModConfig.DefaultPosition)
+                .Toggle(out var showIcon, "showIcon", ModConfig.DefaultShowIcon)
                 .Build();
-            ModConfig.Instance.Bind(en, position, showIcon);
+            // Named arguments, because two of the three handles are SettingHandle<bool> with the same
+            // default: swapping them compiles, passes both guards, and logs a plausible line. It would
+            // only surface once a player flips one switch and the other one moves.
+            ModConfig.Instance.Bind(enabled: en, position: position, showIcon: showIcon);
             Debug.Log(
                 $"[PlayerCoordinatesHud] Settings bound. enabled={ModConfig.Instance.enabled}, position={ModConfig.Instance.position}, showIcon={ModConfig.Instance.showIcon}"
             );

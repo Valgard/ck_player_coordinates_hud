@@ -41,7 +41,15 @@ namespace PlayerCoordinatesHud
             BelowMinimap,
         }
 
-        // Null only in the brief pre-Bind window at mod load, where the defaults below apply.
+        // Each default has to hold in two places — here, as the pre-Bind fallback, and in the
+        // registration in Init that the menu actually stores. Nothing couples the two, and a
+        // divergence is invisible: it only shows during the brief window before Bind, where the
+        // getter would silently answer with the other value. Naming them once removes the question.
+        public const bool DefaultEnabled = true;
+        public const Position DefaultPosition = Position.BottomLeft;
+        public const bool DefaultShowIcon = true;
+
+        // Null only in the brief pre-Bind window at mod load, where the defaults above apply.
         private SettingHandle<bool> _enabledHandle;
         private SettingHandle<Position> _positionHandle;
         private SettingHandle<bool> _showIconHandle;
@@ -54,9 +62,19 @@ namespace PlayerCoordinatesHud
         /// </summary>
         public void Bind(SettingHandle<bool> enabled, SettingHandle<Position> position, SettingHandle<bool> showIcon)
         {
-            if (enabled == null || position == null || showIcon == null)
+            // Named, not counted: with three handles "a null handle" leaves the reader guessing which
+            // setting went quiet, and the guess gets worse with every knob added. Same shape as the
+            // wiring check in CoordinatesHud.Awake.
+            string missing = "";
+            if (enabled == null)
+                missing += "enabled";
+            if (position == null)
+                missing += (missing.Length > 0 ? ", " : "") + "position";
+            if (showIcon == null)
+                missing += (missing.Length > 0 ? ", " : "") + "showIcon";
+            if (missing.Length > 0)
                 UnityEngine.Debug.LogError(
-                    "[PlayerCoordinatesHud] Bind called with a null handle — that setting will stay at its default and ignore the menu."
+                    $"[PlayerCoordinatesHud] Bind received null handle(s): {missing}. Those settings stay at their defaults and ignore the menu."
                 );
             if (_enabledHandle != null || _positionHandle != null || _showIconHandle != null)
                 UnityEngine.Debug.LogWarning("[PlayerCoordinatesHud] Bind called more than once — the later handles win.");
@@ -66,15 +84,15 @@ namespace PlayerCoordinatesHud
             _showIconHandle = showIcon;
         }
 
-        // Master switch (default true). When false the readout is hidden.
-        public bool enabled => _enabledHandle != null ? _enabledHandle.Value : true;
+        // Master switch. When false the readout is hidden.
+        public bool enabled => _enabledHandle != null ? _enabledHandle.Value : DefaultEnabled;
 
-        // Where the readout is drawn (default BottomLeft, the 1.0.0 behaviour).
-        public Position position => _positionHandle != null ? _positionHandle.Value : Position.BottomLeft;
+        // Where the readout is drawn (BottomLeft is the 1.0.0 behaviour).
+        public Position position => _positionHandle != null ? _positionHandle.Value : DefaultPosition;
 
-        // Whether the marker sits left of the coordinates (default true). With it off the text takes
-        // the icon's width back, so the readout is flush with its anchor either way.
-        public bool showIcon => _showIconHandle != null ? _showIconHandle.Value : true;
+        // Whether the marker sits left of the coordinates. With it off, a left-hand corner gives the
+        // icon's width back to the text; a right-hand one never spent it, so only the icon goes away.
+        public bool showIcon => _showIconHandle != null ? _showIconHandle.Value : DefaultShowIcon;
 
         private static readonly ModConfig _instance = new ModConfig();
         public static ModConfig Instance => _instance;
