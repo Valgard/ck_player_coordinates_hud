@@ -296,10 +296,18 @@ dependency.
 `../utils/upload.sh` publishes this mod via the shared
 `CoreKeeperModUtils.CLIPublishHelper.Publish` Editor class. The version comes
 from the topmost `## [x.y.z]` entry of `CHANGELOG.md`; the profile logo is
-`unity/PlayerCoordinatesHud/Editor/logo.png`; the real mod ID lands in
-`unity/PlayerCoordinatesHud/Editor/PlayerCoordinatesHud_modio.asset` (currently
-`modId: 0`, unpublished). Set the mod.io profile type tag to **`Script`** (an
-`Asset` tag silently disables the mod's scripts).
+`unity/PlayerCoordinatesHud/Editor/logo.png`; the real mod ID lives in
+`unity/PlayerCoordinatesHud/Editor/PlayerCoordinatesHud_modio.asset`, written
+there by the first successful publish — read it there rather than from any
+line of prose, this one included.
+
+**The tags are synchronised by the publish, not set by hand.** The `Type` group
+comes from `CK_MODIO_TYPE` in `.envrc`, the `Access Type` group is derived from
+the ModBuilderSettings' `skipSafetyChecks`, and both are diffed against what
+mod.io currently carries, so a surplus tag is removed rather than left
+standing. That last part is why a hand-set `Asset` tag no longer needs
+guarding against, though it remains worth knowing what one would do: it
+silently disables the mod's scripts. Mechanics in `../docs/publishing.md`.
 
 ## Conventions
 
