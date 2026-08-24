@@ -143,7 +143,10 @@ Four runtime classes in the `PlayerCoordinatesHud` namespace:
   forces the aspect from those numbers), so the visible area is always
   ±15 × ±8.4375 and the edges never move. Measured at runtime instead: the
   drawn bounds of CK's button hints and of its PvP label, which move with what
-  they contain; the text height and its drawn left edge via
+  they contain; the drawn left edge of ItemChecklist's counter, which shares the
+  top-right row — found as a sibling under the same HUD parent, by name prefix,
+  so that optional mod needs no assembly reference; the text height and its
+  drawn left edge via
   `PugText.dimensions`; the marker's width off its own sprite; and the text
   row's own depth below the root, read back from the prefab transform
   (`RowDrop`). The prefab's own Z is kept, since anchors are 2-D.
@@ -266,12 +269,19 @@ were caught here.
   CK's own `PvPTextUI` reads the same flag — but note what for: it picks
   between two vertical offsets, not its own visibility (that is
   `pvpMode && !isShowingMap`).
+- **`EffectiveCorner` answers which corner a position *belongs to*, never where
+  the readout currently stands.** It maps `BelowMinimap` to `TopRight`
+  unconditionally — including while that position is successfully sitting under
+  the minimap — so anything keyed on the corner has to live inside the branch
+  where the plain corner actually applied. Testing it one level out is how the
+  ItemChecklist step would also shove the below-minimap row sideways, and the
+  symptom would not read as a bug: a misplaced row looks like a bad default.
 
 ## Not yet built
 
-`docs/roadmap.md` — points cut to stand alone, each recording what is already
-settled and what still has to be decided. Read it before starting one; the
-groundwork is done and does not need re-deriving.
+Nothing. `docs/roadmap.md` is empty of points and kept for its shape: an idea
+gets written up there first — what is settled, what still has to be decided —
+so that picking it up later does not mean re-deriving the groundwork.
 
 ## macOS / CrossOver
 

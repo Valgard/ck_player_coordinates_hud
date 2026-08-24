@@ -20,7 +20,10 @@ playing.
   moves to the top-right corner whenever the minimap is not on screen, so it
   never ends up on top of the big map, and in a PvP world it sits below the
   game's own PvP notice rather than on it. The bottom-right corner keeps clear
-  of the on-screen button hints.
+  of the on-screen button hints, and the top-right one shares its row with the
+  *Item Checklist* mod's counter — the two stand side by side instead of on top
+  of each other, and the readout takes the corner back when that counter is
+  not there.
 - **Auto-hides during inventory / menus / load screens, and when you hide the
   game's interface** (the toggle-UI key) — never overlaps the
   vanilla UI. Stays visible while the big map (Tab) is open, though: the

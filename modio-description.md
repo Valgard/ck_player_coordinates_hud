@@ -17,7 +17,9 @@ current position on screen, permanently.
   steps aside to the top-right corner whenever the minimap isn't on screen, so
   it never lands on top of the big map, and in a PvP world it slides below the
   game's own PvP notice instead of covering it. The bottom-right corner keeps
-  clear of the on-screen button hints.
+  clear of the on-screen button hints, and the top-right one shares its row
+  with the *Item Checklist* mod's counter — side by side rather than on top of
+  each other, and the whole corner back again when that counter is not there.
 - Stays out of the way. Auto-hides during inventory, menus and loading screens,
   and when you hide the game's interface with the toggle-UI key; it never
   overlaps the vanilla UI. Keeps showing while the big map (Tab) is open,

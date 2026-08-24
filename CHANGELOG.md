@@ -18,6 +18,11 @@ All notable changes to this mod are documented here.
 - **"Below minimap" also gives way to the PvP notice.** In a world with PvP
   enabled the game shows its own label in that exact spot; the readout now sits
   below it instead of on top of it, and moves back up when PvP is switched off.
+- **The top-right corner makes room for Item Checklist.** If you run that mod
+  too, its counter sits on exactly this row — the readout now steps aside along
+  the row so the two stand side by side, instead of landing on top of it. It
+  takes the whole corner back the moment that counter is switched off or
+  hidden, and no other position is affected.
 - **A position marker sits beside the coordinates.** A small icon to the left of
   the readout, modelled on the marker the game puts on your position on the map.
   Switch it off with **Show icon** if you prefer the numbers on their own — the
