@@ -72,6 +72,18 @@ switch the minimap off in the options, and open the big map with Tab.
 `BottomRight` needs its own look: walk up to a chest so hint rows appear and
 disappear **without moving**, and toggle key hints off.
 
+**`TopRight` rests on another mod's geometry, so it gets four steps of its own**
+— and they have to be repeated whenever ItemChecklist ships a release, because
+nothing else would catch it moving its counter. With that mod installed and its
+counter on: the readout sits 8 px left of it on the same row, and walking far
+from the Core grows it *leftwards* while the gap stays put. Switch that mod's
+counter off in its own settings: the readout takes the whole corner back, with
+no restart. Set `BelowMinimap` while the minimap is **visible**: it must stay
+under the minimap and must **not** step sideways — that is the case the `if`'s
+placement protects, and the failure would look like a bad default rather than a
+bug. Then hide the minimap: it jumps to the top-right corner *and* steps aside
+there.
+
 Two failure modes worth naming, because both are silent:
 - A position change that only takes effect after the next tile boundary means
   `RepaintForNewAlignment` is not firing (or not passing `force: true`).

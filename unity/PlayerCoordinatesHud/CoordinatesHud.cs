@@ -89,6 +89,16 @@ namespace PlayerCoordinatesHud
         // still specific enough to tell that counter from its sibling ItemChecklistTracker HUD.
         private const string ItemChecklistHudName = "ItemChecklistHUD";
 
+        // The same mod's LOADER name, which is a different string from the GameObject above and comes
+        // from its manifest rather than its prefab. Asked once (see TryGetItemChecklistLeftEdge).
+        private const string ItemChecklistModName = "ItemChecklist";
+
+        // How many fruitless searches count as "that mod is loaded but its HUD is not where this expects
+        // it" rather than "it has not instantiated yet". 300 is about five seconds at 60 fps and only
+        // accrues while the readout is visible in a top-right position — far past instantiation, which
+        // happens within a few frames of the world being playable.
+        private const int ItemChecklistMissesBeforeWarning = 300;
+
         // Stands in for half the text height until the first Render has measured one. The prefab uses
         // fontFace thinTiny (Font5), whose charDims.y is 10 -> 10/16 = 0.625 tall, so half is 0.3125.
         private const float FallbackHalfTextHeight = 0.3125f;
@@ -134,6 +144,15 @@ namespace PlayerCoordinatesHud
         // over a handful of siblings, unlike the scene-wide FindFirstObjectByType the vanilla lookups
         // pay for — which is the whole reason those two need a flag at all.
         private Transform _itemChecklistHud;
+
+        // Whether that mod is loaded at all — null until asked. Separates its ABSENCE, which is ordinary
+        // and silent, from a broken assumption about it, which is a defect and gets one warning; and it
+        // is what keeps the sibling walk off the frame path for players who do not run it.
+        private bool? _itemChecklistLoaded;
+
+        // Consecutive fruitless searches, so the warning above fires only once the delay has ruled out
+        // "not instantiated yet". Never reset: it exists to fire once, not to track a rate.
+        private int _itemChecklistMisses;
 
         // Reused across frames so measuring the hints allocates nothing after the first pass. Keep the
         // field typed as List<Renderer>: the foreach below then uses List's struct enumerator, while an
@@ -256,14 +275,19 @@ namespace PlayerCoordinatesHud
                 // it: EffectiveCorner maps BelowMinimap to TopRight unconditionally, so testing the
                 // corner out there would also shove the below-minimap position sideways while it is
                 // successfully dodging the minimap — a spot ItemChecklist does not occupy.
+                // Min, not assignment: the step may only ever move the readout LEFT, away from what it
+                // is making room for. The measured value belongs to another mod, and this keeps a
+                // surprising one — that mod gaining a position setting of its own, say, which this one
+                // already has — from carrying the readout out of the corner the player chose. Snapping
+                // DOWN inside the measurement pulls the same way, so the two agree rather than fight.
                 if (corner == ModConfig.Position.TopRight && TryGetItemChecklistLeftEdge(out float neighbourLeft))
-                    anchor.x = neighbourLeft - NeighbourGap;
+                    anchor.x = Mathf.Min(anchor.x, neighbourLeft - NeighbourGap);
             }
 
-            // Alignment follows the corner the position belongs to — and deliberately not whether any
-            // dodge succeeded. All three dodges preserve it: the two in TryGetDodgingAnchor are purely
-            // vertical moves on right-hand positions, and the ItemChecklist step above is a purely
-            // horizontal one that keeps the text growing away from what it made room for.
+            // Alignment follows the corner the position belongs to — and deliberately not whether the
+            // anchor was moved. Both dodges in TryGetDodgingAnchor are purely vertical moves on
+            // right-hand positions, and the ItemChecklist step above is a purely horizontal one that
+            // keeps the text growing away from what it made room for; none re-flows the row.
             bool rightAligned = IsRightAligned(corner);
 
             var target = new Vector3(anchor.x, anchor.y, _anchorZ);
@@ -616,9 +640,20 @@ namespace PlayerCoordinatesHud
         /// with its next release — the same reason the vanilla lookups above measure.</para>
         ///
         /// <para>Found as a SIBLING by name: both mods instantiate their HUD under
-        /// <c>Manager.ui.chestInventoryUI.transform.parent</c>, so this is a handful of string compares
-        /// rather than a scene scan — and it needs no assembly reference, which is what keeps the
+        /// <c>Manager.ui.chestInventoryUI.transform.parent</c> — CK's <c>IngameUI</c> root, which has 41
+        /// vanilla children plus whatever other mods hang there — so the search is a walk over those
+        /// rather than a scene scan, and it needs no assembly reference, which is what keeps the
         /// dependency optional.</para>
+        ///
+        /// <para><strong>The loaded-mod check in front of it is not an optimisation.</strong> A failed
+        /// sibling search cannot tell "that mod is not here" from "that mod is here and something about
+        /// it moved" — a renamed root, a different parent — and only the second is a defect, one whose
+        /// sole symptom would be the two readouts overlapping again exactly as they did before this
+        /// existed. Asking the loader separates them, and it is asked once because the loaded set cannot
+        /// change while the game runs. It also keeps the walk off the frame path entirely for everyone
+        /// who does not run that mod, which is most players: <c>Object.name</c> marshals a fresh managed
+        /// string on every access, so 41 of them per frame is the kind of churn <see cref="_boundsScratch"/>
+        /// exists to avoid one instance of.</para>
         ///
         /// <para>The same one-frame lag as the button hints applies, for the same reason: that mod
         /// toggles its own container from its own <c>LateUpdate</c>, and two <c>LateUpdate</c>s have no
@@ -629,12 +664,28 @@ namespace PlayerCoordinatesHud
         {
             leftLocal = 0f;
 
-            // Searched whenever there is nothing cached — which covers three states with one test: not
-            // looked yet, that mod not installed, and a neighbour that was destroyed since (see the
-            // field). Repeating the walk while it is absent is the point, not a cost: latching a miss
-            // would park this readout on top of a HUD that appears one frame later.
+            if (!_itemChecklistLoaded.HasValue)
+                _itemChecklistLoaded = IsModLoaded(ItemChecklistModName);
+            if (!_itemChecklistLoaded.Value)
+                return false;
+
+            // Searched whenever there is nothing cached — which covers both "has not instantiated its
+            // HUD yet" and a neighbour destroyed since, because Unity's == overload reports a destroyed
+            // transform as null. Latching a MISS is what must not happen: it would park this readout on
+            // top of a HUD that appears one frame later.
             if (_itemChecklistHud == null)
+            {
                 _itemChecklistHud = FindSibling(ItemChecklistHudName);
+
+                // Past the point where "not instantiated yet" explains it, a miss is structural — and
+                // this is the one branch that keeps searching forever, so counting its own attempts is
+                // enough of a clock. Guarded by == rather than >= so it stays a single line, and the
+                // frame path is log-free after it, the way the two lookups above are.
+                if (_itemChecklistHud == null && ++_itemChecklistMisses == ItemChecklistMissesBeforeWarning)
+                    Debug.LogWarning(
+                        $"[PlayerCoordinatesHud] ItemChecklist is loaded but no '{ItemChecklistHudName}' object was found beside this HUD — the top-right position cannot step aside for its counter and the two will overlap. Its HUD prefab may have been renamed or re-parented."
+                    );
+            }
 
             if (_itemChecklistHud == null)
                 return false;
@@ -644,13 +695,49 @@ namespace PlayerCoordinatesHud
             if (!TryGetDrawnBounds(_itemChecklistHud.gameObject, out var bounds))
                 return false;
 
-            leftLocal = SnapDownToPixel(ToLocal(new Vector2(bounds.min.x, 0f)).x);
+            // Only give way to something actually ON this row. The name is the weakest part of the whole
+            // arrangement — it belongs to another mod, which is free to rename or add things — and the
+            // prefix would match, say, a future "ItemChecklistHUDTracker"; that mod's existing tracker
+            // HUD sits at the screen centre and follows the player, so matching one would drag this
+            // readout across the screen every frame while leaving it at TopY. A row the player did not
+            // choose, with nothing in the log. The test costs one comparison and makes the rule true.
+            var min = ToLocal(new Vector2(bounds.min.x, bounds.min.y));
+            float rowCentre = TopY - RowDrop();
+            float rowReach = TextCentreDrop();
+            if (ToLocal(new Vector2(0f, bounds.max.y)).y < rowCentre - rowReach || min.y > rowCentre + rowReach)
+                return false;
+
+            leftLocal = SnapDownToPixel(min.x);
             return true;
+        }
+
+        /// <summary>
+        /// Whether the loader has a mod of this name. Asked through <c>API.ModLoader</c> rather than by
+        /// looking for its types, so it stays true of a mod this one does not reference and cannot
+        /// compile against. Fully qualified rather than imported: <c>PugMod</c> carries a
+        /// <c>MemberInfo</c> that collides on sight with other namespaces, and one call does not earn
+        /// that risk.
+        /// </summary>
+        private static bool IsModLoaded(string modName)
+        {
+            var mods = PugMod.API.ModLoader.LoadedMods;
+            if (mods == null)
+                return false;
+            // Metadata is a STRUCT, so it is never null and must not be guarded as if it were — the
+            // compiler rejects that outright. Only the entry itself can be missing.
+            foreach (var mod in mods)
+                if (mod != null && mod.Metadata.name == modName)
+                    return true;
+            return false;
         }
 
         /// <summary>
         /// The first sibling of this HUD whose name starts with <paramref name="namePrefix"/>, or null.
         /// Skips this HUD itself, so a prefix that also matched it could not shadow the real one.
+        ///
+        /// <para>Every call allocates: <c>Object.name</c> is not a field but a marshalling getter that
+        /// builds a fresh managed string, and the parent holds 41 vanilla children plus every mod HUD.
+        /// So this must not run per frame in the steady state — the caller's job, not this method's.</para>
         /// </summary>
         private Transform FindSibling(string namePrefix)
         {
@@ -668,11 +755,17 @@ namespace PlayerCoordinatesHud
         }
 
         /// <summary>
-        /// Rounds a coordinate down onto CK's 1/16 pixel grid. Every anchor in this file is a multiple
-        /// of it on purpose (see <see cref="TopY"/>): a point-filtered font landing between two pixels
-        /// is the one thing that visibly softens it. A position derived from another mod's UI is
-        /// exactly where that offset creeps in — ItemChecklist's own row sits at 124.8 px — and down
-        /// rather than to-nearest keeps the step on the side that widens the gap it just measured.
+        /// Rounds a coordinate down onto CK's 1/16 pixel grid. Every anchor CONSTANT in this file is a
+        /// multiple of it on purpose (see <see cref="TopY"/>) — the runtime-measured ones are not, which
+        /// is the point: a point-filtered font landing between two pixels is the one thing that visibly
+        /// softens it, and a position derived from another mod's UI is exactly where such an offset
+        /// creeps in.
+        ///
+        /// <para>Against today's ItemChecklist this is a no-op, and the comment says so rather than
+        /// implying work it does not do: that mod's row sits off the grid VERTICALLY (124.8 px), but the
+        /// edge measured here is horizontal, and its icon happens to land on 157/16 exactly. The guard
+        /// is for the release where that stops being true. Down rather than to-nearest is the caller's
+        /// requirement, stated where the caller uses it.</para>
         /// </summary>
         private static float SnapDownToPixel(float value) => Mathf.Floor(value * PixelsPerUnit) / PixelsPerUnit;
 
