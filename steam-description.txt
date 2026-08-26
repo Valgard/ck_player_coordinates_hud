@@ -1,0 +1,24 @@
+[h1]Player Coordinates HUD[/h1]
+
+Core Keeper only shows coordinates inside the map view, and only for wherever your mouse happens to be pointing — never for you, and never while you're actually out exploring. Player Coordinates HUD fixes that: it puts your current position on screen, permanently, in the same format the map itself uses — e.g. 57, -24 (62).
+
+[b]Plays nicely with everything already on screen.[/b] Pick any of the four screen corners, or below the minimap; whichever you choose lines up with the game's own UI edges, steps aside for the PvP notice and the button hints, and shares its row with the Item Checklist mod's counter instead of overlapping it. The readout auto-hides during inventory, menus and loading screens, and stays out of the way when you hide the interface — but keeps showing while the big map is open, so you get both your position and the cursor's position at a glance.
+
+[b]Multiplayer:[/b] this mod runs entirely client-side — install it for yourself and it works on any server, whether or not the server or other players have it too.
+
+[h2]Settings[/h2]
+
+Open Options → Mod settings to move the readout, hide the position marker, or switch it off entirely — no config files.
+
+[h2]Requirements[/h2]
+
+[list]
+[*] CoreLib (required)
+[*] Mod Settings Menu (required) — hosts the in-game settings screen
+[/list]
+
+Steam does not prompt for required items the way mod.io does — subscribe to Mod Settings Menu and CoreLib as well, or the mod will not load.
+
+[hr][/hr]
+
+Built with the official Pugstorm Core Keeper Mod SDK. Personal-use, non-commercial (Core Keeper EULA). Not affiliated with or endorsed by Pugstorm.
