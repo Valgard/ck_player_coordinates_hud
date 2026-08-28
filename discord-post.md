@@ -31,6 +31,6 @@ Keeper's hide-interface key hides this along with everything else.
 
 ## Requirements
 
-**CoreLib** and **Mod Settings Menu** — mod.io offers both when you subscribe.
+**CoreLib** and **Mod Settings Menu**, both offered when you subscribe.
 
 Client-side only.
