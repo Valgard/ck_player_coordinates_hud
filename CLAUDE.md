@@ -291,9 +291,12 @@ were caught here.
 
 ## Not yet built
 
-Nothing. `docs/roadmap.md` is empty of points and kept for its shape: an idea
-gets written up there first — what is settled, what still has to be decided —
-so that picking it up later does not mean re-deriving the groundwork.
+One point stands in `docs/roadmap.md`: the mod's only screenshot predates
+1.1.0, so the positions, the marker and the edge-flush alignment are shown
+nowhere. No code work — but the picture is what the mod.io and Workshop
+galleries and the Discord post all show. An idea gets written up there first —
+what is settled, what still has to be decided — so that picking it up later
+does not mean re-deriving the groundwork.
 
 ## macOS / CrossOver
 
