@@ -298,10 +298,11 @@ does not mean re-deriving the groundwork.
 ## macOS / CrossOver
 
 Deployed through the fake-mod.io workaround (see parent `../CLAUDE.md`). This
-mod's fake mod.io ID is **`9999990`**; every sibling uses a distinct ID in the
-`9999990`..`9999999` block. Do not open the in-game Mods menu while a fake-ID
-install is active; re-run `../utils/build.sh` to restore if the cache is
-wiped.
+mod's fake mod.io ID is **`9999990`**; every sibling uses a distinct one, and
+the IDs already taken are the `FAKE_MOD_ID` lines in the sibling
+`*/.envrc.example` files — the same source `../utils/new_mod.py` reads to
+allocate the next. Do not open the in-game Mods menu while a fake-ID install
+is active; re-run `../utils/build.sh` to restore if the cache is wiped.
 
 **Required dependencies:** declared in `unity/PlayerCoordinatesHud.asset`'s
 `dependencies:` list (`CoreLib`, `ModSettingsMenu`, both `required: 1`) and in
