@@ -100,38 +100,35 @@ Four runtime classes in the `PlayerCoordinatesHud` namespace:
   and binds the handles into `ModConfig` — **by name**, because two of the three
   are `SettingHandle<bool>` with the same default, so a swap would compile,
   clear both guards and log a plausible line. None of them is marked
-  `RequiresRestart`: all are read live every frame,
-  so a change takes effect the moment the menu closes — **not** while it is
-  open, since the visibility gate hides the readout behind any menu.
-  `ModObjectLoaded` captures the HUD prefab by
-  GameObject name (`"PlayerCoordinatesHUD"`) — routed this way, **not** via
-  CoreLib's `UserInterfaceModule.RegisterModUI`, because that path hides the
-  UI on `HideAllInventoryAndCraftingUI`, the opposite of this mod's always-on
+  `RequiresRestart`: all are read live every frame, so a change takes effect the
+  moment the menu closes — **not** while it is open, since the visibility gate
+  hides the readout behind any menu. `ModObjectLoaded` captures the HUD prefab
+  by GameObject name (`"PlayerCoordinatesHUD"`) — routed this way, **not** via
+  CoreLib's `UserInterfaceModule.RegisterModUI`, because that path hides the UI
+  on `HideAllInventoryAndCraftingUI`, the opposite of this mod's always-on
   intent. `Update` lazily instantiates the captured prefab under
   `Manager.ui.chestInventoryUI.transform.parent` once the UIManager hierarchy
   exists (same pattern as the sibling HUD mods), then feeds the local player's
   world position into `CoordinatesHud.Render` every frame. Re-instantiation is
   gated on the instantiated GameObject, **not** on `CoordinatesHud.Instance` —
-  `Instance` is only assigned by that component's own `Awake`, which never
-  fires if the Editor wiring (the `hudRoot`/`coordinateText`/
+  `Instance` is only assigned by that component's own `Awake`, which never fires
+  if the Editor wiring (the `hudRoot`/`coordinateText`/
   `coordinateTextOutline`/`icon` serialized fields) is missing, and an
   `Instance`-based gate would then re-instantiate the prefab every frame.
 - **`ModConfig`** — the settings adapter. The player-facing knobs: `enabled`
-  (Toggle, default `true`), `position` (Choice over the `Position` enum,
-  default `BottomLeft`) and `showIcon` (Toggle, default `true`), read from bound
+  (Toggle, default `true`), `position` (Choice over the `Position` enum, default
+  `BottomLeft`) and `showIcon` (Toggle, default `true`), read from bound
   `SettingHandle`s (`ModConfig.Bind`, called once from `Init`). Singleton shape
-  mirrors the sibling mods
-  (`ModConfig.Instance.enabled`). Before `Bind` is called (the brief pre-load
-  window), the getters fall back to those defaults. **The `Position` member
-  names are persisted data, not just identifiers** — `Choice` stores a setting
-  as `value.ToString()` and resolves its label as
-  `PlayerCoordinatesHud-Config/position/<name>`, so renaming one silently
-  resets every player who chose it and drops its localization.
-- **`CoordinatesHud : UIelement`** — owns the two `PugText`s
-  (`coordinateText` white foreground, `coordinateTextOutline` black
-  drop-shadow, offset 1px down-right), the `icon` SpriteRenderer beside them,
-  and the `hudRoot` child it toggles.
-  `LateUpdate` decides visibility from explicit signals
+  mirrors the sibling mods (`ModConfig.Instance.enabled`). Before `Bind` is
+  called (the brief pre-load window), the getters fall back to those defaults.
+  **The `Position` member names are persisted data, not just identifiers** —
+  `Choice` stores a setting as `value.ToString()` and resolves its label as
+  `PlayerCoordinatesHud-Config/position/<name>`, so renaming one silently resets
+  every player who chose it and drops its localization.
+- **`CoordinatesHud : UIelement`** — owns the two `PugText`s (`coordinateText`
+  white foreground, `coordinateTextOutline` black drop-shadow, offset 1px
+  down-right), the `icon` SpriteRenderer beside them, and the `hudRoot` child it
+  toggles. `LateUpdate` decides visibility from explicit signals
   (`WorldState.IsInPlayableWorld && !Manager.prefs.hideInGameUI &&
   !Manager.ui.isAnyInventoryShowing && !Manager.menu.IsAnyMenuActive() &&
   ModConfig.Instance.enabled`) — deliberately not CK's own HUD idiom
@@ -140,40 +137,39 @@ Four runtime classes in the `PlayerCoordinatesHud` namespace:
   unrelated reasons at once (hidden UI, fades, load screens); `WorldState`
   already covers the latter. **`hideInGameUI` is load-bearing**, not a niche
   setting: it is a regular keybind (`PlayerInput.InputType.TOGGLE_UI`), and
-  without that term the readout is the one thing left on an empty screen —
-  with `BelowMinimap` additionally jumping to the top-right corner, because CK
-  deactivates the minimap along with the rest. `Render(float3 playerWorldPos)` is called every frame from
-  `PlayerCoordinatesHudMod.Update` but only actually repaints the `PugText`s
-  when the formatted string changed (a `_lastRendered` cache) — this HUD runs
-  permanently, unlike CK's own `CoordinatesUI`, which only renders while the
-  map is open, so an unconditional `Render` would churn every frame.
-  `ApplyPosition` (also from `LateUpdate`, only while visible) moves the root
-  to the configured anchor, matches the text alignment to it, and then calls
-  `ApplyIcon` to lay out the marker and text within the row. **All anchors
-  are constants** read off the vanilla prefab — the uiCamera is not
+  without that term the readout is the one thing left on an empty screen — with
+  `BelowMinimap` additionally jumping to the top-right corner, because CK
+  deactivates the minimap along with the rest. `Render(float3 playerWorldPos)`
+  is called every frame from `PlayerCoordinatesHudMod.Update` but only actually
+  repaints the `PugText`s when the formatted string changed (a `_lastRendered`
+  cache) — this HUD runs permanently, unlike CK's own `CoordinatesUI`, which
+  only renders while the map is open, so an unconditional `Render` would churn
+  every frame. `ApplyPosition` (also from `LateUpdate`, only while visible)
+  moves the root to the configured anchor, matches the text alignment to it, and
+  then calls `ApplyIcon` to lay out the marker and text within the row. **All
+  anchors are constants** read off the vanilla prefab — the uiCamera is not
   screen-driven (its `PugCamera` runs `OutputMode.Fixed` at 480×270 and PugRP
-  forces the aspect from those numbers), so the visible area is always
-  ±15 × ±8.4375 and the edges never move. Measured at runtime instead: the
-  drawn bounds of CK's button hints and of its PvP label, which move with what
-  they contain; the drawn left edge of ItemChecklist's counter, which shares the
+  forces the aspect from those numbers), so the visible area is always ±15 ×
+  ±8.4375 and the edges never move. Measured at runtime instead: the drawn
+  bounds of CK's button hints and of its PvP label, which move with what they
+  contain; the drawn left edge of ItemChecklist's counter, which shares the
   top-right row — found as a sibling under the same HUD parent, by name prefix,
   so that optional mod needs no assembly reference; the text height and its
-  drawn left edge via
-  `PugText.dimensions`; the marker's width off its own sprite; and the text
-  row's own depth below the root, read back from the prefab transform
-  (`RowDrop`). The prefab's own Z is kept, since anchors are 2-D.
+  drawn left edge via `PugText.dimensions`; the marker's width off its own
+  sprite; and the text row's own depth below the root, read back from the prefab
+  transform (`RowDrop`). The prefab's own Z is kept, since anchors are 2-D.
   `ApplyIcon`, called from the end of `ApplyPosition`, then lays out marker and
   text within that row: the marker leads the value on **both** sides of the
   screen (as ItemChecklist's does) rather than mirroring with the corner. What
   mirrors is which half moves — a left-hand corner pins the icon to the anchor
-  and shifts both text rows right by the icon's width plus the gap, a
-  right-hand one leaves the text ending at the anchor and hangs the icon off
+  and shifts both text rows right by the icon's width plus the gap, a right-hand
+  one leaves the text ending at the anchor and hangs the icon off
   `dimensions.xMin`. Both stay flush with the anchor. `showIcon: false` returns
   that width to the text in a left-hand corner; in a right-hand one the text
   never moved, so only the marker goes. The shift is written as prefab-base +
-  offset, never accumulated, so the per-frame pass is idempotent and the
-  outline keeps its 1 px down-right offset for free. The icon's **y stays
-  prefab geometry** — see the gotcha below.
+  offset, never accumulated, so the per-frame pass is idempotent and the outline
+  keeps its 1 px down-right offset for free. The icon's **y stays prefab
+  geometry** — see the gotcha below.
 - **`WorldState`** — the shared `IsInPlayableWorld` predicate, copied from
   ItemChecklist (its Iter-11.6/Iter-15 fixes): `isInGame &&
   isSceneHandlerReady && !cutsceneIsPlaying && Manager.main.player != null &&
@@ -215,16 +211,17 @@ were caught here.
   back on. Hidden once (inventory open, a menu, `Enabled` toggled off), gone
   for the rest of the session. Any prefab rework must keep the toggled
   GameObject a *child* of the component's own root, never the root itself.
-- **`math.floor`, never an `(int)` cast — and never round.** `CoordinatesHud.Render`
-  floors both axes with `(int)math.floor(playerWorldPos.x/.z)`. A cast
-  truncates toward zero, so a position like `-14.3` casts to `-14` but floors
-  to `-15` — a one-tile discrepancy that only shows up west/north of the Core,
-  exactly where a tester is unlikely to look first. CK's own `CoordinatesUI`
-  floors too, so this keeps the two surfaces in exact agreement. The distance
-  is then computed from the **already-floored integers**
-  (`sqrt(x*x + z*z)`, both `int`) and formatted with `.ToString("F0")` rather
-  than rounded — that formatting choice is also copied directly from CK's own
-  call, so there is no independent rounding-mode decision to get wrong.
+- **`math.floor`, never an `(int)` cast — and never round.**
+  `CoordinatesHud.Render` floors both axes with
+  `(int)math.floor(playerWorldPos.x/.z)`. A cast truncates toward zero, so a
+  position like `-14.3` casts to `-14` but floors to `-15` — a one-tile
+  discrepancy that only shows up west/north of the Core, exactly where a tester
+  is unlikely to look first. CK's own `CoordinatesUI` floors too, so this keeps
+  the two surfaces in exact agreement. The distance is then computed from the
+  **already-floored integers** (`sqrt(x*x + z*z)`, both `int`) and formatted
+  with `.ToString("F0")` rather than rounded — that formatting choice is also
+  copied directly from CK's own call, so there is no independent rounding-mode
+  decision to get wrong.
 - **`maxWidth` must stay `0` on both `PugText`s.** Any non-zero value routes
   every `Render` call through CK's `PugFont` word-wrap path
   (`AddNewLinesToLinesExceedingMaxWidth`), which throws

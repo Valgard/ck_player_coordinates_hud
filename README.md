@@ -25,11 +25,10 @@ playing.
   of each other, and the readout takes the corner back when that counter is
   not there.
 - **Auto-hides during inventory / menus / load screens, and when you hide the
-  game's interface** (the toggle-UI key) — never overlaps the
-  vanilla UI. Stays visible while the big map (Tab) is open, though: the
-  map's own coordinate readout follows your mouse cursor, so having this
-  one keep following your player at the same time gives you both at a
-  glance.
+  game's interface** (the toggle-UI key) — never overlaps the vanilla UI. Stays
+  visible while the big map (Tab) is open, though: the map's own coordinate
+  readout follows your mouse cursor, so having this one keep following your
+  player at the same time gives you both at a glance.
 - **A position marker beside the numbers**, modelled on the one the game puts
   on your position on the map. Switch it off if you prefer the numbers alone.
 - **Configurable in-game.** Open **Options → Mod settings** to change the
