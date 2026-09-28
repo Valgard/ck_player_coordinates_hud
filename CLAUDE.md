@@ -52,7 +52,9 @@ Expected: `Successfully compiled PlayerCoordinatesHud safetyCheck=True`, zero
 bottom-left, updates as you move, survives hiding/showing (inventory open-
 close, `Enabled` off-on), stays hidden through both load screens and the
 intro cutscene, and its numbers agree with the map view (Tab) for the same
-tile. Verified on Core Keeper 1.2.1.5.
+tile. The full list was walked on Core Keeper 1.2.1.5. On 1.3.0.2 only the
+first steps are confirmed — the 1.2-built release compiles, loads and shows the
+readout; the rest is unchecked there.
 
 **Placement needs its own pass.** The anchors (`LeftEdgeX`, `RightEdgeX`,
 `TopY`, `BottomY`, `MinimapBottomY`) were read off the vanilla prefab, never

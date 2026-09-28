@@ -39,7 +39,7 @@ playing.
 
 ## Requirements
 
-- Core Keeper (verified on 1.2.1.5)
+- Core Keeper 1.2 or 1.3 (verified on 1.2.1.5 and 1.3.0.2)
 - [CoreLib](https://mod.io/g/corekeeper/m/corelib) — required dependency
 - *Mod Settings Menu* — required dependency. Hosts the in-game settings
   screen (Options → Mod settings) where the readout is configured.
