@@ -42,3 +42,7 @@ unity/PlayerCoordinatesHud/Editor/CLIPublishHelper.cs
 unity/PlayerCoordinatesHud/Editor/CLIPublishHelper.cs.meta
 unity/PlayerCoordinatesHud/Editor/LocalizationGenerator.cs
 unity/PlayerCoordinatesHud/Editor/LocalizationGenerator.cs.meta
+
+# Superpowers process artifacts: plans, scratch and the subagent workspace
+docs/superpowers/
+/.superpowers/
